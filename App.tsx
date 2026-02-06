@@ -9,7 +9,7 @@ import { Modal } from './components/ui/Modal';
 import { Button } from './components/ui/Button';
 import { User, Message, Conversation, AppState, Attachment, View, Theme } from './types';
 import { AVAILABLE_MODELS } from './constants';
-import { generateChatResponse } from './services/geminiService';
+import { generateChatResponse } from './services/aiService';
 import { Menu, AlertTriangle, Trash2, PanelLeftOpen, Star, Heart, Smile } from 'lucide-react';
 
 // Star & Blob Background (Unified with Auth)
@@ -117,12 +117,18 @@ const App: React.FC = () => {
 
   const triggerAIResponse = async (chatId: string, history: Message[], userMessage: string, attachments: Attachment[]) => {
     setLoading(true);
+    const loadingDelay = new Promise<void>((resolve) => {
+      setTimeout(resolve, 2000);
+    });
+
     try {
       const responseText = await generateChatResponse(currentModel, history, userMessage, attachments);
+      await loadingDelay;
       setMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || []), {
         id: (Date.now() + 1).toString(), role: 'model', content: responseText, timestamp: Date.now()
       }] }));
     } catch (error: any) {
+      await loadingDelay;
       setMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || []), {
         id: (Date.now() + 1).toString(), role: 'model', content: "哎呀，出了一点小问题，稍后再试一下吧。", timestamp: Date.now(), isError: true
       }] }));

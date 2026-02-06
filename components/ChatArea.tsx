@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Message, Attachment, User } from '../types';
 import { Paperclip, X, File, Sparkles, Wand2, Pencil, ArrowUp, Bot, Copy, Check, Star, Heart, Smile } from 'lucide-react';
@@ -19,6 +19,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendM
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const adjustTextareaHeight = useCallback(() => {
+    if (!textareaRef.current) return;
+    const DEFAULT_HEIGHT = 48;
+    const MAX_HEIGHT = 150;
+    textareaRef.current.style.height = 'auto';
+    const scrollHeight = textareaRef.current.scrollHeight || DEFAULT_HEIGHT;
+    const targetHeight = Math.min(Math.max(scrollHeight, DEFAULT_HEIGHT), MAX_HEIGHT);
+    textareaRef.current.style.height = targetHeight + 'px';
+    textareaRef.current.style.overflowY = scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
+  }, []);
+
   useEffect(() => {
     if (messages.length > 0 || isLoading) {
       setTimeout(() => {
@@ -27,13 +38,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendM
     }
   }, [messages, isLoading]);
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
-      textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > 150 ? 'auto' : 'hidden';
-    }
-  }, [input]);
+  useLayoutEffect(() => {
+    adjustTextareaHeight();
+  }, [input, adjustTextareaHeight]);
 
   const handleSend = () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
