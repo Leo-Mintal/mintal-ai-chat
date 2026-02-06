@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Mintal AI - 智能助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Nunito"', '"Noto Sans SC"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+            colors: {
+              // Creamy Light Mode Palette (unchanged)
+              cream: {
+                50: '#FFFCF5', 
+                100: '#FFF9E6',
+                200: '#FFF0C2',
+                300: '#FFE08A',
+              },
+              cheese: {
+                100: '#FFF4E0',
+                200: '#FFE0B2',
+                300: '#FFCC80',
+                400: '#FFB74D',
+                500: '#FFA726',
+                600: '#FB8C00',
+              },
+              warm: {
+                500: '#A1887F',
+                700: '#5D4037',
+                800: '#4E342E',
+                900: '#3E2723',
+              },
+              // Dreamy Dark Mode Palette (Refined)
+              night: {
+                bg: '#0B0F19', // Deeper blue/black
+                card: '#151b2e', // Slightly lighter blue
+                surface: '#1e293b',
+              },
+              starlight: {
+                100: '#E0F2FE',
+                200: '#BAE6FD',
+                300: '#7DD3FC',
+                400: '#38BDF8',
+                500: '#0EA5E9', // Sky blue for primary actions
+                600: '#0284C7',
+                glow: 'rgba(14, 165, 233, 0.5)',
+              }
+            },
+            animation: {
+              'pop-in': 'popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+              'slide-up-bouncy': 'slideUpBouncy 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+              'bounce-soft': 'bounceSoft 2s infinite',
+              'float': 'float 6s ease-in-out infinite',
+              'scale-click': 'scaleClick 0.1s ease-out',
+              'twinkle': 'twinkle 4s ease-in-out infinite', // New star animation
+            },
+            keyframes: {
+              popIn: {
+                '0%': { opacity: '0', transform: 'scale(0.8) translateY(10px)' },
+                '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+              },
+              slideUpBouncy: {
+                '0%': { opacity: '0', transform: 'translateY(40px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              bounceSoft: {
+                '0%, 100%': { transform: 'translateY(-5%)' },
+                '50%': { transform: 'translateY(0)' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+              scaleClick: {
+                '0%': { transform: 'scale(1)' },
+                '100%': { transform: 'scale(0.95)' },
+              },
+              twinkle: {
+                '0%, 100%': { opacity: '0.3', transform: 'scale(0.8)' },
+                '50%': { opacity: '1', transform: 'scale(1.2)' },
+              }
+            },
+            boxShadow: {
+              'soft': '0 10px 40px -10px rgba(0,0,0,0.08)',
+              'cheese': '0 10px 25px -5px rgba(255, 167, 38, 0.4)',
+              'cheese-sm': '0 4px 10px -2px rgba(255, 167, 38, 0.3)',
+              'night': '0 10px 30px -10px rgba(0,0,0,0.5)',
+              'glow': '0 0 25px rgba(14, 165, 233, 0.4)', // Blue glow
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      html, body {
+        height: 100%;
+        overflow: hidden;
+      }
+      
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(200, 200, 200, 0.3);
+        border-radius: 10px;
+        background-clip: content-box;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(200, 200, 200, 0.5);
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      body {
+        -webkit-font-smoothing: antialiased;
+      }
+      
+      ::selection {
+        background: #FFE0B2;
+        color: #5D4037;
+      }
+      .dark ::selection {
+        background: #0ea5e9;
+        color: white;
+      }
+
+      /* Custom utility for stars */
+      .star {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        filter: blur(0.5px);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-cream-50 dark:bg-night-bg text-warm-800 dark:text-starlight-100 antialiased transition-colors duration-700">
+    <div id="root" class="h-full"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

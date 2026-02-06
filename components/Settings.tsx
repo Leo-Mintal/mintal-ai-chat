@@ -1,0 +1,116 @@
+import React, { useState } from 'react';
+import { ArrowLeft, Moon, Sun, Monitor, Bell, Shield, Laptop } from 'lucide-react';
+import { Theme } from '../types';
+import { Button } from './ui/Button';
+import { Switch } from './ui/Switch';
+
+interface SettingsProps {
+  onBack: () => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}
+
+export const Settings: React.FC<SettingsProps> = ({ onBack, theme, setTheme }) => {
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50/50 dark:bg-transparent animate-fade-in overflow-y-auto custom-scrollbar">
+      {/* Header */}
+      <div className="sticky top-0 z-10 flex items-center gap-4 px-6 py-4 bg-white/60 dark:bg-night-card/60 backdrop-blur-md border-b border-slate-200/60 dark:border-white/5">
+        <button 
+          onClick={onBack}
+          className="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-starlight-100 hover:bg-white/80 dark:hover:bg-white/10 rounded-xl transition-all active:scale-95"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-starlight-100">设置</h2>
+      </div>
+
+      <div className="max-w-2xl mx-auto w-full p-6 sm:p-8 space-y-8">
+        
+        {/* Appearance Section */}
+        <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-starlight-100 mb-4 px-1 uppercase tracking-wider flex items-center gap-2">
+            <Laptop size={14} className="text-cheese-500 dark:text-starlight-500" /> 外观
+          </h3>
+          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300">
+            <div className="p-5 sm:p-6 flex items-center justify-between">
+              <div>
+                <div className="font-bold text-slate-800 dark:text-slate-200">主题模式</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">选择最适合您的界面风格</div>
+              </div>
+              <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-black/20 p-1.5 rounded-2xl border border-white/50 dark:border-white/5">
+                {[
+                  { value: 'light', icon: Sun, label: '浅色' },
+                  { value: 'system', icon: Monitor, label: '自动' },
+                  { value: 'dark', icon: Moon, label: '深色' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setTheme(option.value as Theme)}
+                    className={`
+                      flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1)
+                      ${theme === option.value 
+                        ? 'bg-white dark:bg-starlight-500 text-cheese-600 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10 scale-105' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5'
+                      }
+                    `}
+                  >
+                    <option.icon size={14} />
+                    <span className="hidden sm:inline">{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Notifications */}
+        <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-starlight-100 mb-4 px-1 uppercase tracking-wider flex items-center gap-2">
+            <Bell size={14} className="text-purple-500 dark:text-starlight-400" /> 通知
+          </h3>
+          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300 divide-y divide-slate-100 dark:divide-white/5">
+            <div className="p-5 sm:p-6 flex items-center justify-between">
+              <div>
+                <div className="font-bold text-slate-800 dark:text-slate-200">回复提示音</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">AI 回复完成时播放提示音</div>
+              </div>
+              <Switch checked={soundEnabled} onChange={setSoundEnabled} />
+            </div>
+            <div className="p-5 sm:p-6 flex items-center justify-between">
+               <div>
+                <div className="font-bold text-slate-800 dark:text-slate-200">桌面通知</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">在后台运行时接收消息通知</div>
+              </div>
+              <Switch checked={notificationsEnabled} onChange={setNotificationsEnabled} />
+            </div>
+          </div>
+        </section>
+
+        {/* Privacy */}
+        <section className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-starlight-100 mb-4 px-1 uppercase tracking-wider flex items-center gap-2">
+            <Shield size={14} className="text-green-500 dark:text-green-400" /> 隐私与数据
+          </h3>
+          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300">
+             <div className="p-5 sm:p-6 flex items-center justify-between">
+               <div>
+                <div className="font-bold text-slate-800 dark:text-slate-200">清除所有本地缓存</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">删除浏览器中存储的所有对话历史和设置</div>
+              </div>
+              <Button variant="secondary" size="sm" className="text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10 dark:border-red-900/30 dark:text-red-400 rounded-xl">
+                 清除数据
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <div className="text-center text-xs text-slate-400 dark:text-slate-500 pt-8 pb-4 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+          Mintal Intelligence v1.0.0
+        </div>
+      </div>
+    </div>
+  );
+};
