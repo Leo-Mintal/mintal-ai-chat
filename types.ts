@@ -1,4 +1,12 @@
 
+export interface AuthCredentials {
+  mode: 'login' | 'register';
+  usernameOrEmail: string;
+  password: string;
+  username?: string;
+  email?: string;
+}
+
 export interface User {
   id: string;
   name: string;

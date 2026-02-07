@@ -7,10 +7,13 @@ import { Profile } from './components/Profile';
 import { Select } from './components/ui/Select';
 import { Modal } from './components/ui/Modal';
 import { Button } from './components/ui/Button';
-import { User, Message, Conversation, AppState, Attachment, View, Theme } from './types';
+import { User, Message, Conversation, AppState, Attachment, View, Theme, AuthCredentials } from './types';
 import { AVAILABLE_MODELS } from './constants';
 import { generateChatResponse } from './services/aiService';
-import { Menu, AlertTriangle, Trash2, PanelLeftOpen, Star, Heart, Smile } from 'lucide-react';
+import { authenticate, logoutWithServer, restoreSessionAndFetchUser } from './services/authService';
+import { updateAuthUser } from './services/authStorage';
+import { fetchRemoteModelOptions } from './services/modelService';
+import { Menu, AlertTriangle, Trash2, PanelLeftOpen, Star, Heart } from 'lucide-react';
 
 // Star & Blob Background (Unified with Auth)
 const UnifiedBackground = () => {
@@ -66,6 +69,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
+  const [modelOptions, setModelOptions] = useState(AVAILABLE_MODELS);
   const [currentModel, setCurrentModel] = useState<string>(AVAILABLE_MODELS[0].id);
   const [theme, setTheme] = useState<Theme>('system');
 
@@ -75,6 +79,7 @@ const App: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState<'none' | 'confirm_delete'>('none');
+  const [authBootstrapping, setAuthBootstrapping] = useState(true);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -89,6 +94,33 @@ const App: React.FC = () => {
     return () => mediaQuery.removeEventListener('change', applyTheme);
   }, [theme]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRemoteModels = async () => {
+      try {
+        const remoteModels = await fetchRemoteModelOptions();
+
+        if (!cancelled && remoteModels.length > 0) {
+          setModelOptions(remoteModels);
+          setCurrentModel(previousModel =>
+            remoteModels.some(model => model.id === previousModel)
+              ? previousModel
+              : remoteModels[0].id
+          );
+        }
+      } catch (error) {
+        console.error('加载远程模型列表失败，已回退到本地默认模型', error);
+      }
+    };
+
+    loadRemoteModels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const startNewChat = () => {
     const newId = Date.now().toString();
     const newConv: Conversation = { id: newId, title: '新对话', updatedAt: Date.now(), preview: '开始新的聊天...' };
@@ -97,6 +129,33 @@ const App: React.FC = () => {
     setActiveConvId(newId);
     if(window.innerWidth < 1024) setIsSidebarOpen(false);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrapAuth = async () => {
+      try {
+        const session = await restoreSessionAndFetchUser();
+
+        if (!cancelled && session) {
+          setUser(session.user);
+          setAppState(AppState.CHAT);
+          setCurrentView('CHAT');
+          startNewChat();
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthBootstrapping(false);
+        }
+      }
+    };
+
+    bootstrapAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDeleteConversation = (id: string) => {
     setConversations(prev => prev.filter(c => c.id !== id));
@@ -108,11 +167,34 @@ const App: React.FC = () => {
     setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
   };
 
-  const handleLogin = (userData: User) => {
-    setUser(userData);
+  const handleLogin = async (credentials: AuthCredentials) => {
+    const session = await authenticate(credentials);
+
+    setUser(session.user);
     setAppState(AppState.CHAT);
     setCurrentView('CHAT');
     startNewChat();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutWithServer();
+    } catch (error) {
+      console.error('退出登录接口调用失败，将仅清理前端登录态', error);
+    } finally {
+      setUser(null);
+      setAppState(AppState.AUTH);
+      setCurrentView('CHAT');
+      setConversations([]);
+      setMessages({});
+      setActiveConvId(null);
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const handleUpdateUser = (nextUser: User) => {
+    setUser(nextUser);
+    updateAuthUser(nextUser);
   };
 
   const triggerAIResponse = async (chatId: string, history: Message[], userMessage: string, attachments: Attachment[]) => {
@@ -166,6 +248,16 @@ const App: React.FC = () => {
     await triggerAIResponse(activeConvId, historyBefore, newContent, updatedMsg.attachments || []);
   };
 
+  if (authBootstrapping) {
+    return (
+      <div className="min-h-screen bg-[#FFFDF5] dark:bg-night-bg flex items-center justify-center text-warm-700 dark:text-starlight-200">
+        <div className="px-8 py-6 rounded-[32px] bg-white/70 dark:bg-night-card/70 border border-white/60 dark:border-white/10 shadow-soft text-center">
+          <p className="text-lg font-bold animate-pulse">正在恢复登录状态...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (appState === AppState.AUTH) return <Auth onLogin={handleLogin} />;
 
   return (
@@ -178,7 +270,7 @@ const App: React.FC = () => {
         conversations={conversations} activeConversationId={activeConvId}
         onSelectConversation={setActiveConvId} onNewChat={startNewChat}
         onDeleteConversation={handleDeleteConversation} onRenameConversation={handleRenameConversation}
-        onNavigate={setCurrentView} user={user!} onLogout={() => setAppState(AppState.AUTH)}
+        onNavigate={setCurrentView} user={user!} onLogout={handleLogout}
       />
 
       <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 p-4 gap-4 h-full">
@@ -209,7 +301,7 @@ const App: React.FC = () => {
                 )}
 
                 <div className="w-56">
-                  <Select options={AVAILABLE_MODELS} value={currentModel} onChange={setCurrentModel} placeholder="选择模型" />
+                  <Select options={modelOptions} value={currentModel} onChange={setCurrentModel} placeholder="选择模型" />
                 </div>
               </div>
 
@@ -240,7 +332,7 @@ const App: React.FC = () => {
         )}
 
         {currentView === 'PROFILE' && user && (
-           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><Profile user={user} onUpdateUser={setUser} onBack={() => setCurrentView('CHAT')} /></div>
+           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><Profile user={user} onUpdateUser={handleUpdateUser} onBack={() => setCurrentView('CHAT')} /></div>
         )}
       </main>
 
