@@ -252,4 +252,28 @@ export const apiClient = {
 
     return request<T>(path, init, options);
   },
+
+  put: <T, B = unknown>(path: string, body?: B, options: RequestOptions = {}) => {
+    const init: RequestInit = { method: 'PUT' };
+
+    if (body !== undefined) {
+      init.body = body instanceof FormData ? body : JSON.stringify(body);
+    }
+
+    return request<T>(path, init, options);
+  },
+
+  patch: <T, B = unknown>(path: string, body?: B, options: RequestOptions = {}) => {
+    const init: RequestInit = { method: 'PATCH' };
+
+    if (body !== undefined) {
+      init.body = body instanceof FormData ? body : JSON.stringify(body);
+    }
+
+    return request<T>(path, init, options);
+  },
+
+  delete: <T>(path: string, options: RequestOptions = {}) => {
+    return request<T>(path, { method: 'DELETE' }, options);
+  },
 };

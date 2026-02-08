@@ -28,6 +28,9 @@ export interface Message {
   content: string;
   timestamp: number;
   attachments?: Attachment[];
+  thinking?: string;
+  thinkingDurationMs?: number;
+  isStreaming?: boolean;
   isError?: boolean;
 }
 
@@ -36,6 +39,7 @@ export interface Conversation {
   title: string;
   updatedAt: number;
   preview: string;
+  backendConversationId?: number;
 }
 
 export interface ModelOption {
@@ -50,5 +54,5 @@ export enum AppState {
   CHAT = 'CHAT',
 }
 
-export type View = 'CHAT' | 'SETTINGS' | 'PROFILE';
+export type View = 'CHAT' | 'SETTINGS' | 'PROFILE' | 'ADMIN';
 export type Theme = 'light' | 'dark' | 'system';

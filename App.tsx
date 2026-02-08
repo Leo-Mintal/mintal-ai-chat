@@ -1,18 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Auth } from './components/Auth';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { Settings } from './components/Settings';
 import { Profile } from './components/Profile';
+import { AdminPanel } from './components/AdminPanel';
 import { Select } from './components/ui/Select';
 import { Modal } from './components/ui/Modal';
 import { Button } from './components/ui/Button';
 import { User, Message, Conversation, AppState, Attachment, View, Theme, AuthCredentials } from './types';
 import { AVAILABLE_MODELS } from './constants';
 import { generateChatResponse } from './services/aiService';
-import { authenticate, logoutWithServer, restoreSessionAndFetchUser } from './services/authService';
+import { authenticate, logoutWithServer, restoreSessionAndFetchUser, updateCurrentUserProfile } from './services/authService';
 import { updateAuthUser } from './services/authStorage';
 import { fetchRemoteModelOptions } from './services/modelService';
+import { fetchUserQuota, UserQuotaSummary } from './services/adminService';
+import {
+  ConversationListItem,
+  deleteConversation as deleteRemoteConversation,
+  fetchConversationList,
+  fetchConversationMemories,
+  renameConversation as renameRemoteConversation,
+} from './services/conversationService';
 import { Menu, AlertTriangle, Trash2, PanelLeftOpen, Star, Heart } from 'lucide-react';
 
 // Star & Blob Background (Unified with Auth)
@@ -63,6 +72,85 @@ const UnifiedBackground = () => {
   );
 };
 
+const toPositiveInteger = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const CONVERSATION_LIST_PAGE_SIZE = 20;
+const CONVERSATION_MEMORY_PAGE_SIZE = 50;
+
+const AI_BUBBLE_COOKIE_KEY = 'mintal_ai_bubble';
+const AI_BUBBLE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
+const readCookieValue = (name: string): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const cookieParts = window.document.cookie ? window.document.cookie.split('; ') : [];
+
+  for (const entry of cookieParts) {
+    const separatorIndex = entry.indexOf('=');
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const key = entry.slice(0, separatorIndex);
+    if (key === name) {
+      return decodeURIComponent(entry.slice(separatorIndex + 1));
+    }
+  }
+
+  return null;
+};
+
+const loadAiBubblePreference = (): boolean => {
+  return readCookieValue(AI_BUBBLE_COOKIE_KEY) === '1';
+};
+
+const saveAiBubblePreference = (enabled: boolean): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.document.cookie = `${AI_BUBBLE_COOKIE_KEY}=${enabled ? '1' : '0'}; path=/; max-age=${AI_BUBBLE_COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
+};
+
+
+const parseTimeToTimestamp = (value?: string): number => {
+  if (!value) {
+    return Date.now();
+  }
+
+  const parsed = new Date(value).getTime();
+  if (Number.isNaN(parsed)) {
+    return Date.now();
+  }
+
+  return parsed;
+};
+
+const pickConversationTitle = (title: string | undefined, fallback = '新对话'): string => {
+  if (typeof title === 'string' && title.trim()) {
+    return title.trim();
+  }
+
+  return fallback;
+};
+
+const buildRemoteConversationLocalId = (conversationId: number): string => {
+  return `remote-${conversationId}`;
+};
+
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.AUTH);
   const [currentView, setCurrentView] = useState<View>('CHAT');
@@ -72,14 +160,25 @@ const App: React.FC = () => {
   const [modelOptions, setModelOptions] = useState(AVAILABLE_MODELS);
   const [currentModel, setCurrentModel] = useState<string>(AVAILABLE_MODELS[0].id);
   const [theme, setTheme] = useState<Theme>('system');
+  const [aiBubbleEnabled, setAiBubbleEnabled] = useState<boolean>(() => loadAiBubblePreference());
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const [conversationListPage, setConversationListPage] = useState(1);
+  const [conversationListHasMore, setConversationListHasMore] = useState(false);
+  const [conversationListLoading, setConversationListLoading] = useState(false);
+  const [conversationListAppending, setConversationListAppending] = useState(false);
+  const [conversationListError, setConversationListError] = useState('');
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState<'none' | 'confirm_delete'>('none');
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
+  const [quotaInfo, setQuotaInfo] = useState<UserQuotaSummary | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  const [quotaError, setQuotaError] = useState('');
+  const sendingGuardRef = useRef(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -95,19 +194,29 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
+    saveAiBubblePreference(aiBubbleEnabled);
+  }, [aiBubbleEnabled]);
+
+  useEffect(() => {
     let cancelled = false;
 
     const loadRemoteModels = async () => {
       try {
-        const remoteModels = await fetchRemoteModelOptions();
+        const { options: remoteModels, defaultModelId } = await fetchRemoteModelOptions();
 
         if (!cancelled && remoteModels.length > 0) {
           setModelOptions(remoteModels);
-          setCurrentModel(previousModel =>
-            remoteModels.some(model => model.id === previousModel)
-              ? previousModel
-              : remoteModels[0].id
-          );
+          setCurrentModel(previousModel => {
+            if (remoteModels.some(model => model.id === previousModel)) {
+              return previousModel;
+            }
+
+            if (defaultModelId && remoteModels.some(model => model.id === defaultModelId)) {
+              return defaultModelId;
+            }
+
+            return remoteModels[0].id;
+          });
         }
       } catch (error) {
         console.error('加载远程模型列表失败，已回退到本地默认模型', error);
@@ -121,14 +230,250 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const startNewChat = () => {
-    const newId = Date.now().toString();
-    const newConv: Conversation = { id: newId, title: '新对话', updatedAt: Date.now(), preview: '开始新的聊天...' };
+  const syncUserQuota = useCallback(
+    async (targetUser: User | null, options: { silent?: boolean } = {}) => {
+      const userId = toPositiveInteger(targetUser?.id);
+      if (!userId) {
+        setQuotaInfo(null);
+        setQuotaError('当前账号缺少有效 user_id');
+        return;
+      }
+
+      if (!options.silent) {
+        setQuotaLoading(true);
+      }
+
+      try {
+        const latestQuota = await fetchUserQuota(userId);
+        setQuotaInfo(latestQuota);
+        setQuotaError('');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '额度状态获取失败';
+        setQuotaError(message);
+      } finally {
+        if (!options.silent) {
+          setQuotaLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (appState !== AppState.CHAT || !user) {
+      return;
+    }
+
+    void syncUserQuota(user, { silent: true });
+
+    const timer = window.setInterval(() => {
+      void syncUserQuota(user, { silent: true });
+    }, 15000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [appState, user, syncUserQuota]);
+
+  const startNewChat = useCallback(() => {
+    const newId = `local-${Date.now()}`;
+    const newConv: Conversation = {
+      id: newId,
+      title: '新对话',
+      updatedAt: Date.now(),
+      preview: '开始新的聊天...',
+    };
+
     setConversations(prev => [newConv, ...prev]);
     setMessages(prev => ({ ...prev, [newId]: [] }));
     setActiveConvId(newId);
-    if(window.innerWidth < 1024) setIsSidebarOpen(false);
-  };
+
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
+  const mergeRemoteConversations = useCallback((
+    current: Conversation[],
+    remoteItems: ConversationListItem[],
+    append: boolean,
+  ): Conversation[] => {
+    const remoteConversationIds = new Set<number>();
+
+    const mappedRemote = remoteItems.map(item => {
+      remoteConversationIds.add(item.conversationId);
+      const matched = current.find(conv => conv.backendConversationId === item.conversationId);
+
+      return {
+        id: matched?.id || buildRemoteConversationLocalId(item.conversationId),
+        title: pickConversationTitle(item.title),
+        updatedAt: parseTimeToTimestamp(item.lastMessageAt || item.updatedAt || item.createdAt),
+        preview: matched?.preview || pickConversationTitle(item.title, '点击查看历史消息'),
+        backendConversationId: item.conversationId,
+      } satisfies Conversation;
+    });
+
+    if (append) {
+      const merged = [...current];
+
+      for (const incoming of mappedRemote) {
+        const matchIndex = merged.findIndex(conv => conv.backendConversationId === incoming.backendConversationId);
+
+        if (matchIndex >= 0) {
+          merged[matchIndex] = { ...merged[matchIndex], ...incoming };
+        } else {
+          merged.push(incoming);
+        }
+      }
+
+      return merged;
+    }
+
+    const localDrafts = current.filter(conv => !conv.backendConversationId);
+    const staleRemote = current.filter(
+      conv => conv.backendConversationId && !remoteConversationIds.has(conv.backendConversationId),
+    );
+
+    return [...localDrafts, ...mappedRemote, ...staleRemote];
+  }, []);
+
+  const loadConversationListPage = useCallback(
+    async (
+      targetUser: User | null,
+      options: { page?: number; append?: boolean; silent?: boolean } = {},
+    ) => {
+      const userId = toPositiveInteger(targetUser?.id);
+
+      if (!userId) {
+        setConversationListHasMore(false);
+        setConversationListError('当前账号缺少有效 user_id');
+        return null;
+      }
+
+      const page = options.page && options.page > 0 ? options.page : 1;
+      const append = Boolean(options.append);
+      const silent = Boolean(options.silent);
+
+      if (!silent) {
+        if (append) {
+          setConversationListAppending(true);
+        } else {
+          setConversationListLoading(true);
+        }
+      }
+
+      try {
+        const result = await fetchConversationList({
+          userId,
+          page,
+          pageSize: CONVERSATION_LIST_PAGE_SIZE,
+        });
+
+        setConversationListError('');
+        setConversationListPage(result.page);
+        setConversationListHasMore(result.page * result.pageSize < result.total);
+        setConversations(prev => mergeRemoteConversations(prev, result.items, append));
+
+        return result;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '会话列表加载失败';
+        setConversationListError(message);
+        return null;
+      } finally {
+        if (!silent) {
+          if (append) {
+            setConversationListAppending(false);
+          } else {
+            setConversationListLoading(false);
+          }
+        }
+      }
+    },
+    [mergeRemoteConversations],
+  );
+
+  const loadConversationMemoriesById = useCallback(
+    async (conversationId: string, targetUser: User | null) => {
+      const userId = toPositiveInteger(targetUser?.id);
+      if (!userId) {
+        return;
+      }
+
+      const targetConversation = conversations.find(conv => conv.id === conversationId);
+      if (!targetConversation?.backendConversationId) {
+        return;
+      }
+
+      setHistoryLoading(true);
+
+      try {
+        const result = await fetchConversationMemories({
+          userId,
+          conversationId: targetConversation.backendConversationId,
+          page: 1,
+          pageSize: CONVERSATION_MEMORY_PAGE_SIZE,
+        });
+
+        const remoteMessages: Message[] = result.items.map(item => ({
+          id: `memory-${item.memoryId}`,
+          role: item.role === 'assistant' ? 'model' : 'user',
+          content: item.content || '',
+          thinking: item.role === 'assistant' ? item.thinking : undefined,
+          thinkingDurationMs: item.role === 'assistant' ? item.thinkingDurationMs : undefined,
+          timestamp: parseTimeToTimestamp(item.createdAt || item.updatedAt),
+        }));
+
+        setMessages(prev => ({
+          ...prev,
+          [conversationId]: remoteMessages,
+        }));
+
+        if (remoteMessages.length > 0) {
+          const latestMessage = remoteMessages[remoteMessages.length - 1];
+          setConversations(prev => prev.map(item => (
+            item.id === conversationId
+              ? {
+                  ...item,
+                  preview: latestMessage.content.slice(0, 40) || item.preview,
+                  updatedAt: latestMessage.timestamp || item.updatedAt,
+                }
+              : item
+          )));
+        }
+      } catch (error) {
+        console.error('加载会话历史失败', error);
+      } finally {
+        setHistoryLoading(false);
+      }
+    },
+    [conversations],
+  );
+
+  const handleSelectConversation = useCallback((id: string) => {
+    setActiveConvId(id);
+    void loadConversationMemoriesById(id, user);
+  }, [loadConversationMemoriesById, user]);
+
+  const handleLoadMoreConversations = useCallback(() => {
+    if (!conversationListHasMore || conversationListAppending) {
+      return;
+    }
+
+    void loadConversationListPage(user, {
+      page: conversationListPage + 1,
+      append: true,
+    });
+  }, [conversationListAppending, conversationListHasMore, conversationListPage, loadConversationListPage, user]);
+
+  useEffect(() => {
+    if (appState !== AppState.CHAT || activeConvId || conversations.length === 0) {
+      return;
+    }
+
+    const firstConversationId = conversations[0].id;
+    setActiveConvId(firstConversationId);
+    void loadConversationMemoriesById(firstConversationId, user);
+  }, [activeConvId, appState, conversations, loadConversationMemoriesById, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,7 +486,22 @@ const App: React.FC = () => {
           setUser(session.user);
           setAppState(AppState.CHAT);
           setCurrentView('CHAT');
-          startNewChat();
+          setConversations([]);
+          setMessages({});
+          setActiveConvId(null);
+          setConversationListPage(1);
+          setConversationListHasMore(false);
+          setConversationListError('');
+
+          const list = await loadConversationListPage(session.user, { page: 1 });
+
+          if (!cancelled && (!list || list.items.length === 0)) {
+            startNewChat();
+          }
+
+          if (!cancelled) {
+            void syncUserQuota(session.user);
+          }
         }
       } finally {
         if (!cancelled) {
@@ -150,21 +510,91 @@ const App: React.FC = () => {
       }
     };
 
-    bootstrapAuth();
+    void bootstrapAuth();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadConversationListPage, startNewChat, syncUserQuota]);
 
-  const handleDeleteConversation = (id: string) => {
+  const handleDeleteConversation = async (id: string) => {
+    const targetConversation = conversations.find(item => item.id === id);
+    const userId = toPositiveInteger(user?.id);
+
+    if (targetConversation?.backendConversationId) {
+      if (!userId) {
+        setConversationListError('当前账号缺少有效 user_id，无法删除会话');
+        return;
+      }
+
+      try {
+        await deleteRemoteConversation({
+          userId,
+          conversationId: targetConversation.backendConversationId,
+        });
+        setConversationListError('');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '删除会话失败，请稍后重试';
+        setConversationListError(message);
+        return;
+      }
+    }
+
     setConversations(prev => prev.filter(c => c.id !== id));
-    setMessages(prev => { const newMsgs = { ...prev }; delete newMsgs[id]; return newMsgs; });
-    if (activeConvId === id) setActiveConvId(null);
+    setMessages(prev => {
+      const newMsgs = { ...prev };
+      delete newMsgs[id];
+      return newMsgs;
+    });
+
+    if (activeConvId === id) {
+      setActiveConvId(null);
+    }
+
+    void loadConversationListPage(user, { page: 1, silent: true });
   };
 
-  const handleRenameConversation = (id: string, newTitle: string) => {
-    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
+  const handleRenameConversation = async (id: string, newTitle: string) => {
+    const normalizedTitle = newTitle.trim();
+    if (!normalizedTitle) {
+      return;
+    }
+
+    const targetConversation = conversations.find(item => item.id === id);
+    const userId = toPositiveInteger(user?.id);
+
+    if (targetConversation?.backendConversationId) {
+      if (!userId) {
+        setConversationListError('当前账号缺少有效 user_id，无法重命名会话');
+        return;
+      }
+
+      try {
+        const renamed = await renameRemoteConversation({
+          userId,
+          conversationId: targetConversation.backendConversationId,
+          title: normalizedTitle,
+        });
+
+        setConversations(prev => prev.map(item => (
+          item.id === id
+            ? {
+                ...item,
+                title: renamed.title,
+                updatedAt: parseTimeToTimestamp(renamed.updatedAt),
+              }
+            : item
+        )));
+        setConversationListError('');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '重命名会话失败，请稍后重试';
+        setConversationListError(message);
+      }
+
+      return;
+    }
+
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: normalizedTitle } : c));
   };
 
   const handleLogin = async (credentials: AuthCredentials) => {
@@ -173,7 +603,19 @@ const App: React.FC = () => {
     setUser(session.user);
     setAppState(AppState.CHAT);
     setCurrentView('CHAT');
-    startNewChat();
+    setConversations([]);
+    setMessages({});
+    setActiveConvId(null);
+    setConversationListPage(1);
+    setConversationListHasMore(false);
+    setConversationListError('');
+
+    const list = await loadConversationListPage(session.user, { page: 1 });
+    if (!list || list.items.length === 0) {
+      startNewChat();
+    }
+
+    void syncUserQuota(session.user);
   };
 
   const handleLogout = async () => {
@@ -188,65 +630,301 @@ const App: React.FC = () => {
       setConversations([]);
       setMessages({});
       setActiveConvId(null);
+      setConversationListPage(1);
+      setConversationListHasMore(false);
+      setConversationListLoading(false);
+      setConversationListAppending(false);
+      setConversationListError('');
+      setHistoryLoading(false);
       setIsSidebarOpen(false);
+      setQuotaInfo(null);
+      setQuotaError('');
+      setQuotaLoading(false);
     }
   };
 
-  const handleUpdateUser = (nextUser: User) => {
+  const handleUpdateUser = async (payload: { name: string; email: string }) => {
+    const nextUser = await updateCurrentUserProfile({
+      username: payload.name,
+      email: payload.email,
+    });
+
     setUser(nextUser);
     updateAuthUser(nextUser);
   };
 
-  const triggerAIResponse = async (chatId: string, history: Message[], userMessage: string, attachments: Attachment[]) => {
+  const triggerAIResponse = async (
+    chatId: string,
+    history: Message[],
+    userMessage: string,
+    attachments: Attachment[],
+    backendConversationId?: number,
+  ) => {
     setLoading(true);
-    const loadingDelay = new Promise<void>((resolve) => {
-      setTimeout(resolve, 2000);
-    });
+
+    const assistantMessageId = `${Date.now()}-assistant`;
+    const createdAt = Date.now();
+
+    setMessages(prev => ({
+      ...prev,
+      [chatId]: [
+        ...(prev[chatId] || []),
+        {
+          id: assistantMessageId,
+          role: 'model',
+          content: '',
+          thinking: '',
+          thinkingDurationMs: 0,
+          timestamp: createdAt,
+          isStreaming: true,
+        },
+      ],
+    }));
+
+    const updateAssistantMessage = (updater: (message: Message) => Message) => {
+      setMessages(prev => ({
+        ...prev,
+        [chatId]: (prev[chatId] || []).map(item => (
+          item.id === assistantMessageId ? updater(item) : item
+        )),
+      }));
+    };
+
+    const syncBackendConversationId = (conversationId?: number) => {
+      if (!conversationId) {
+        return;
+      }
+
+      setConversations(prev => prev.map(item => (
+        item.id === chatId && item.backendConversationId !== conversationId
+          ? { ...item, backendConversationId: conversationId }
+          : item
+      )));
+    };
+
+    const durationTicker = window.setInterval(() => {
+      updateAssistantMessage(item => {
+        if (!item.isStreaming) {
+          return item;
+        }
+
+        return {
+          ...item,
+          thinkingDurationMs: Date.now() - createdAt,
+        };
+      });
+    }, 200);
 
     try {
-      const responseText = await generateChatResponse(currentModel, history, userMessage, attachments);
-      await loadingDelay;
-      setMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || []), {
-        id: (Date.now() + 1).toString(), role: 'model', content: responseText, timestamp: Date.now()
-      }] }));
-    } catch (error: any) {
-      await loadingDelay;
-      setMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || []), {
-        id: (Date.now() + 1).toString(), role: 'model', content: "哎呀，出了一点小问题，稍后再试一下吧。", timestamp: Date.now(), isError: true
-      }] }));
+      const response = await generateChatResponse(currentModel, history, userMessage, attachments, user, {
+        conversationId: backendConversationId,
+        onConversationId: (conversationId) => {
+          syncBackendConversationId(conversationId);
+        },
+        onDelta: ({ content, thinking, durationMs, conversationId }) => {
+          const elapsedMs = Date.now() - createdAt;
+          syncBackendConversationId(conversationId);
+
+          updateAssistantMessage(item => ({
+            ...item,
+            content,
+            thinking,
+            thinkingDurationMs: durationMs && durationMs > 0 ? durationMs : elapsedMs,
+            timestamp: Date.now(),
+            isStreaming: true,
+            isError: false,
+          }));
+        },
+      });
+
+      const finalDurationMs = response.durationMs && response.durationMs > 0
+        ? response.durationMs
+        : Date.now() - createdAt;
+
+      updateAssistantMessage(item => ({
+        ...item,
+        content: response.content,
+        thinking: response.thinking,
+        thinkingDurationMs: finalDurationMs,
+        timestamp: Date.now(),
+        isStreaming: false,
+        isError: false,
+      }));
+      syncBackendConversationId(response.conversationId);
+
+      if (response.quota) {
+        const currentUserId = toPositiveInteger(user?.id);
+
+        if (currentUserId) {
+          setQuotaInfo(prev => {
+            const base = prev && prev.userId === currentUserId
+              ? prev
+              : {
+                  userId: currentUserId,
+                  quotaLimit: 0,
+                  quotaUsed: 0,
+                  quotaRemaining: 0,
+                  updatedAt: Date.now(),
+                };
+
+            return {
+              ...base,
+              quotaLimit: typeof response.quota.limit === 'number' ? response.quota.limit : base.quotaLimit,
+              quotaUsed: typeof response.quota.used === 'number' ? response.quota.used : base.quotaUsed,
+              quotaRemaining: typeof response.quota.remaining === 'number' ? response.quota.remaining : base.quotaRemaining,
+              quotaResetAt: response.quota.resetAt || base.quotaResetAt,
+              updatedAt: Date.now(),
+            };
+          });
+          setQuotaError('');
+        }
+      }
+
+      void loadConversationListPage(user, { page: 1, silent: true });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error && error.message
+        ? error.message
+        : '哎呀，出了一点小问题，稍后再试一下吧。';
+
+      updateAssistantMessage(item => ({
+        ...item,
+        content: errorMessage,
+        thinking: '',
+        thinkingDurationMs: Date.now() - createdAt,
+        timestamp: Date.now(),
+        isStreaming: false,
+        isError: true,
+      }));
     } finally {
+      window.clearInterval(durationTicker);
       setLoading(false);
     }
   };
 
   const handleSendMessage = async (text: string, attachments: Attachment[]) => {
+    if (sendingGuardRef.current || loading || historyLoading) {
+      return;
+    }
+
     let chatId = activeConvId;
+
     if (!chatId) {
-      chatId = Date.now().toString();
-      const newConv: Conversation = { id: chatId, title: text.slice(0, 10) + '...', updatedAt: Date.now(), preview: text.slice(0, 40) };
+      chatId = `local-${Date.now()}`;
+      const newConv: Conversation = {
+        id: chatId,
+        title: '新对话',
+        updatedAt: Date.now(),
+        preview: '开始新的聊天...',
+      };
+
       setConversations(prev => [newConv, ...prev]);
       setMessages(prev => ({ ...prev, [chatId!]: [] }));
       setActiveConvId(chatId);
     }
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: Date.now(), attachments };
-    setMessages(prev => ({ ...prev, [chatId!]: [...(prev[chatId!] || []), userMsg] }));
-    if (activeConvId && chatId === activeConvId && messages[chatId!]?.length === 0) {
-      setConversations(prev => prev.map(c => c.id === chatId ? { ...c, title: text.slice(0, 10) } : c));
+
+    const historyBeforeSend = attachments.length > 0 ? [] : (messages[chatId] || []);
+    const userMsg: Message = {
+      id: `${Date.now()}-user`,
+      role: 'user',
+      content: text,
+      timestamp: Date.now(),
+      attachments,
+    };
+
+    setMessages(prev => ({
+      ...prev,
+      [chatId!]: [...(prev[chatId!] || []), userMsg],
+    }));
+
+    setConversations(prev => {
+      const target = prev.find(item => item.id === chatId);
+      if (!target) {
+        return prev;
+      }
+
+      const nextTitle = target.title === '新对话'
+        ? pickConversationTitle(text.slice(0, 20), '新对话')
+        : target.title;
+
+      const updatedConversation: Conversation = {
+        ...target,
+        title: nextTitle,
+        preview: text.slice(0, 40),
+        updatedAt: Date.now(),
+      };
+
+      return [
+        updatedConversation,
+        ...prev.filter(item => item.id !== chatId),
+      ];
+    });
+
+    const currentConversation = conversations.find(item => item.id === chatId);
+
+    sendingGuardRef.current = true;
+    try {
+      await triggerAIResponse(
+        chatId,
+        historyBeforeSend,
+        text,
+        attachments,
+        currentConversation?.backendConversationId,
+      );
+    } finally {
+      sendingGuardRef.current = false;
     }
-    await triggerAIResponse(chatId!, attachments.length > 0 ? [] : (messages[chatId!] || []), text, attachments);
   };
 
   const handleEditMessage = async (messageId: string, newContent: string) => {
-    if (!activeConvId) return;
+    if (!activeConvId || sendingGuardRef.current || loading || historyLoading) {
+      return;
+    }
+
     const currentMsgs = messages[activeConvId];
+    if (!currentMsgs || currentMsgs.length === 0) {
+      return;
+    }
+
     const msgIndex = currentMsgs.findIndex(m => m.id === messageId);
-    if (msgIndex === -1) return;
+    if (msgIndex === -1) {
+      return;
+    }
+
     const oldMsg = currentMsgs[msgIndex];
     const updatedMsg: Message = { ...oldMsg, content: newContent, timestamp: Date.now() };
     const historyBefore = currentMsgs.slice(0, msgIndex);
-    setMessages(prev => ({ ...prev, [activeConvId]: [...historyBefore, updatedMsg] }));
-    await triggerAIResponse(activeConvId, historyBefore, newContent, updatedMsg.attachments || []);
+
+    setMessages(prev => ({
+      ...prev,
+      [activeConvId]: [...historyBefore, updatedMsg],
+    }));
+
+    setConversations(prev => prev.map(item => (
+      item.id === activeConvId
+        ? {
+            ...item,
+            preview: newContent.slice(0, 40),
+            updatedAt: Date.now(),
+          }
+        : item
+    )));
+
+    const currentConversation = conversations.find(item => item.id === activeConvId);
+
+    sendingGuardRef.current = true;
+    try {
+      await triggerAIResponse(
+        activeConvId,
+        historyBefore,
+        newContent,
+        updatedMsg.attachments || [],
+        currentConversation?.backendConversationId,
+      );
+    } finally {
+      sendingGuardRef.current = false;
+    }
   };
+
 
   if (authBootstrapping) {
     return (
@@ -265,12 +943,24 @@ const App: React.FC = () => {
       <UnifiedBackground />
 
       <Sidebar
-        isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen}
-        isDesktopOpen={isDesktopSidebarOpen} setIsDesktopOpen={setIsDesktopSidebarOpen}
-        conversations={conversations} activeConversationId={activeConvId}
-        onSelectConversation={setActiveConvId} onNewChat={startNewChat}
-        onDeleteConversation={handleDeleteConversation} onRenameConversation={handleRenameConversation}
-        onNavigate={setCurrentView} user={user!} onLogout={handleLogout}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        isDesktopOpen={isDesktopSidebarOpen}
+        setIsDesktopOpen={setIsDesktopSidebarOpen}
+        conversations={conversations}
+        activeConversationId={activeConvId}
+        onSelectConversation={handleSelectConversation}
+        onNewChat={startNewChat}
+        onDeleteConversation={handleDeleteConversation}
+        onRenameConversation={handleRenameConversation}
+        onNavigate={setCurrentView}
+        user={user!}
+        onLogout={handleLogout}
+        isConversationLoading={conversationListLoading}
+        conversationError={conversationListError}
+        hasMoreConversations={conversationListHasMore}
+        isLoadingMoreConversations={conversationListAppending}
+        onLoadMoreConversations={handleLoadMoreConversations}
       />
 
       <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 p-4 gap-4 h-full">
@@ -318,21 +1008,36 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-hidden relative">
               <ChatArea
                 messages={activeConvId ? messages[activeConvId] || [] : []}
-                isLoading={loading}
+                isLoading={loading || historyLoading}
                 onSendMessage={handleSendMessage}
                 onEditMessage={handleEditMessage}
                 user={user}
+                quotaInfo={quotaInfo}
+                quotaLoading={quotaLoading}
+                quotaError={quotaError}
+                onRefreshQuota={() => void syncUserQuota(user)}
+                aiBubbleEnabled={aiBubbleEnabled}
               />
             </div>
           </div>
         )}
 
         {currentView === 'SETTINGS' && (
-           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><Settings onBack={() => setCurrentView('CHAT')} theme={theme} setTheme={setTheme} /></div>
+           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><Settings onBack={() => setCurrentView('CHAT')} onNavigateToUsageManagement={() => setCurrentView('ADMIN')} theme={theme} setTheme={setTheme} aiBubbleEnabled={aiBubbleEnabled} setAiBubbleEnabled={setAiBubbleEnabled} /></div>
         )}
 
         {currentView === 'PROFILE' && user && (
            <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><Profile user={user} onUpdateUser={handleUpdateUser} onBack={() => setCurrentView('CHAT')} /></div>
+        )}
+
+        {currentView === 'ADMIN' && (
+           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><AdminPanel onBack={() => setCurrentView('CHAT')} defaultUserId={user?.id} onQuotaUpdated={(latestQuota) => {
+             const currentUserId = toPositiveInteger(user?.id);
+             if (currentUserId && latestQuota.userId === currentUserId) {
+               setQuotaInfo(latestQuota);
+               setQuotaError('');
+             }
+           }} /></div>
         )}
       </main>
 

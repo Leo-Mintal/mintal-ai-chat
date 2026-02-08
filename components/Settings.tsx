@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Moon, Sun, Monitor, Bell, Shield, Laptop } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Monitor, Bell, Shield, Laptop, Gauge } from 'lucide-react';
 import { Theme } from '../types';
 import { Button } from './ui/Button';
 import { Switch } from './ui/Switch';
 
 interface SettingsProps {
   onBack: () => void;
+  onNavigateToUsageManagement: () => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  aiBubbleEnabled: boolean;
+  setAiBubbleEnabled: (enabled: boolean) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ onBack, theme, setTheme }) => {
+export const Settings: React.FC<SettingsProps> = ({
+  onBack,
+  onNavigateToUsageManagement,
+  theme,
+  setTheme,
+  aiBubbleEnabled,
+  setAiBubbleEnabled,
+}) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
@@ -63,6 +73,13 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, theme, setTheme }) =
                 ))}
               </div>
             </div>
+            <div className="p-5 sm:p-6 flex items-center justify-between border-t border-slate-100 dark:border-white/5">
+              <div>
+                <div className="font-bold text-slate-800 dark:text-slate-200">AI 回复聊天框</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">开启后 AI 回复显示气泡边框；默认关闭，仅用户消息显示气泡。</div>
+              </div>
+              <Switch checked={aiBubbleEnabled} onChange={setAiBubbleEnabled} />
+            </div>
           </div>
         </section>
 
@@ -102,6 +119,29 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, theme, setTheme }) =
               </div>
               <Button variant="secondary" size="sm" className="text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10 dark:border-red-900/30 dark:text-red-400 rounded-xl">
                  清除数据
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Usage Management */}
+        <section className="animate-slide-up" style={{ animationDelay: '0.35s' }}>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-starlight-100 mb-4 px-1 uppercase tracking-wider flex items-center gap-2">
+            <Gauge size={14} className="text-cheese-500 dark:text-starlight-400" /> 用量管理
+          </h3>
+          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300">
+            <div className="p-5 sm:p-6 flex items-center justify-between gap-4">
+              <div>
+                <div className="font-bold text-slate-800 dark:text-slate-200">管理账号调用次数</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">进入后可通过管理员验证，为指定用户发放模型调用额度。</div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onNavigateToUsageManagement}
+                className="rounded-xl whitespace-nowrap"
+              >
+                进入用量管理
               </Button>
             </div>
           </div>

@@ -16,6 +16,11 @@ interface SidebarProps {
   setIsOpen: (open: boolean) => void;
   isDesktopOpen: boolean;
   setIsDesktopOpen: (open: boolean) => void;
+  isConversationLoading?: boolean;
+  conversationError?: string;
+  hasMoreConversations?: boolean;
+  isLoadingMoreConversations?: boolean;
+  onLoadMoreConversations?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -31,7 +36,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen,
   isDesktopOpen,
-  setIsDesktopOpen
+  setIsDesktopOpen,
+  isConversationLoading = false,
+  conversationError,
+  hasMoreConversations = false,
+  isLoadingMoreConversations = false,
+  onLoadMoreConversations,
 }) => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -149,7 +159,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex-1 overflow-y-auto px-4 space-y-1.5 custom-scrollbar pb-4">
             <div className="px-3 pb-2 pt-2 text-xs font-bold text-warm-400 dark:text-slate-500 uppercase tracking-wider">最近聊天</div>
             
-            {conversations.length === 0 ? (
+            {isConversationLoading && conversations.length === 0 ? (
+              <div className="px-4 py-8 text-center animate-pop-in">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-cream-100 dark:bg-white/5 text-cheese-300 dark:text-slate-600 mb-3 animate-float">
+                  <MessageCircle size={24} fill="currentColor" className="opacity-50" />
+                </div>
+                <p className="text-xs text-warm-400 dark:text-slate-500 font-bold">正在加载会话...</p>
+              </div>
+            ) : conversations.length === 0 ? (
               <div className="px-4 py-8 text-center animate-pop-in">
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-cream-100 dark:bg-white/5 text-cheese-300 dark:text-slate-600 mb-3 animate-float">
                   <MessageCircle size={24} fill="currentColor" className="opacity-50" />
@@ -229,6 +246,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 );
               })
+            )}
+
+            {conversationError && (
+              <div className="mx-1 mt-3 rounded-2xl border border-red-100 dark:border-red-900/30 bg-red-50/80 dark:bg-red-900/20 px-3 py-2 text-[11px] font-bold text-red-500 dark:text-red-300">
+                {conversationError}
+              </div>
+            )}
+
+            {hasMoreConversations && (
+              <button
+                onClick={onLoadMoreConversations}
+                disabled={isLoadingMoreConversations}
+                className="w-full mt-3 px-4 py-2.5 rounded-2xl text-xs font-bold text-warm-500 dark:text-slate-300 border border-cheese-200/70 dark:border-white/10 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isLoadingMoreConversations ? '加载中...' : '加载更多'}
+              </button>
             )}
           </div>
 
