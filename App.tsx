@@ -8,8 +8,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { Select } from './components/ui/Select';
 import { Modal } from './components/ui/Modal';
 import { Button } from './components/ui/Button';
-import { User, Message, Conversation, AppState, Attachment, View, Theme, AuthCredentials } from './types';
-import { AVAILABLE_MODELS } from './constants';
+import { User, Message, Conversation, AppState, Attachment, View, Theme, AuthCredentials, ModelOption } from './types';
 import { generateChatResponse } from './services/aiService';
 import { authenticate, logoutWithServer, restoreSessionAndFetchUser, updateCurrentUserProfile } from './services/authService';
 import { updateAuthUser } from './services/authStorage';
@@ -157,8 +156,10 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
-  const [modelOptions, setModelOptions] = useState(AVAILABLE_MODELS);
-  const [currentModel, setCurrentModel] = useState<string>(AVAILABLE_MODELS[0].id);
+  const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
+  const [currentModel, setCurrentModel] = useState<string>('');
+  const [modelOptionsLoading, setModelOptionsLoading] = useState(true);
+  const [modelOptionsError, setModelOptionsError] = useState('');
   const [theme, setTheme] = useState<Theme>('system');
   const [aiBubbleEnabled, setAiBubbleEnabled] = useState<boolean>(() => loadAiBubblePreference());
 
@@ -201,29 +202,52 @@ const App: React.FC = () => {
     let cancelled = false;
 
     const loadRemoteModels = async () => {
+      setModelOptionsLoading(true);
+      setModelOptionsError('');
+
       try {
         const { options: remoteModels, defaultModelId } = await fetchRemoteModelOptions();
 
-        if (!cancelled && remoteModels.length > 0) {
-          setModelOptions(remoteModels);
-          setCurrentModel(previousModel => {
-            if (remoteModels.some(model => model.id === previousModel)) {
-              return previousModel;
-            }
-
-            if (defaultModelId && remoteModels.some(model => model.id === defaultModelId)) {
-              return defaultModelId;
-            }
-
-            return remoteModels[0].id;
-          });
+        if (cancelled) {
+          return;
         }
+
+        if (remoteModels.length === 0) {
+          setModelOptions([]);
+          setCurrentModel('');
+          setModelOptionsError('暂无可用模型，请先在后端配置 /models');
+          return;
+        }
+
+        setModelOptions(remoteModels);
+        setCurrentModel(previousModel => {
+          if (remoteModels.some(model => model.id === previousModel)) {
+            return previousModel;
+          }
+
+          if (defaultModelId && remoteModels.some(model => model.id === defaultModelId)) {
+            return defaultModelId;
+          }
+
+          return remoteModels[0].id;
+        });
       } catch (error) {
-        console.error('加载远程模型列表失败，已回退到本地默认模型', error);
+        if (cancelled) {
+          return;
+        }
+
+        setModelOptions([]);
+        setCurrentModel('');
+        setModelOptionsError('模型列表加载失败，请稍后重试');
+        console.error('加载远程模型列表失败', error);
+      } finally {
+        if (!cancelled) {
+          setModelOptionsLoading(false);
+        }
       }
     };
 
-    loadRemoteModels();
+    void loadRemoteModels();
 
     return () => {
       cancelled = true;
@@ -991,7 +1015,7 @@ const App: React.FC = () => {
                 )}
 
                 <div className="w-56">
-                  <Select options={modelOptions} value={currentModel} onChange={setCurrentModel} placeholder="选择模型" />
+                  <Select options={modelOptions} value={currentModel} onChange={setCurrentModel} placeholder="选择模型" isLoading={modelOptionsLoading} emptyText={modelOptionsError || '暂无可用模型'} disabled={modelOptionsLoading || modelOptions.length === 0} />
                 </div>
               </div>
 
@@ -1017,6 +1041,8 @@ const App: React.FC = () => {
                 quotaError={quotaError}
                 onRefreshQuota={() => void syncUserQuota(user)}
                 aiBubbleEnabled={aiBubbleEnabled}
+                inputDisabled={modelOptionsLoading || !currentModel}
+                inputDisabledHint={modelOptionsLoading ? '模型加载中，请稍候…' : modelOptionsError || '暂无可用模型，请先配置模型'}
               />
             </div>
           </div>

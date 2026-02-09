@@ -16,6 +16,8 @@ interface ChatAreaProps {
   quotaError?: string;
   onRefreshQuota?: () => void;
   aiBubbleEnabled: boolean;
+  inputDisabled?: boolean;
+  inputDisabledHint?: string;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -29,6 +31,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   quotaError,
   onRefreshQuota,
   aiBubbleEnabled,
+  inputDisabled = false,
+  inputDisabledHint,
 }) => {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -107,7 +111,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   }, [input, adjustTextareaHeight]);
 
   const handleSend = () => {
-    if ((!input.trim() && attachments.length === 0) || isLoading) return;
+    if ((!input.trim() && attachments.length === 0) || isLoading || inputDisabled) return;
     setIsAutoScrollEnabled(true);
     setShowScrollToBottom(false);
     onSendMessage(input, attachments);
@@ -173,13 +177,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   const showQuotaCard = quotaLoading || Boolean(quotaInfo) || Boolean(quotaError);
-  const canSend = (input.trim().length > 0 || attachments.length > 0) && !isLoading;
+  const modelInputPlaceholder = inputDisabled
+    ? (inputDisabledHint || '当前暂无可用模型，请稍后再试')
+    : '发个消息...';
+  const canSend = (input.trim().length > 0 || attachments.length > 0) && !isLoading && !inputDisabled;
+  const shouldReserveBottomSpace = messages.length > 0 || isLoading;
+  const bottomReserveClass = shouldReserveBottomSpace
+    ? (showQuotaCard ? 'h-56 sm:h-60' : 'h-44 sm:h-48')
+    : 'h-0';
 
   return (
     <div className="flex flex-col h-full relative z-0">
       <div ref={scrollContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6 scroll-smooth custom-scrollbar">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center pb-24 relative">
+          <div className="h-full flex flex-col items-center justify-center text-center relative">
              {/* Decorative Elements for Empty State */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                  <div className="absolute top-[20%] left-[10%] text-cheese-200 dark:text-starlight-500/20 animate-bounce-soft"><Star size={36} className="rotate-12" /></div>
@@ -205,9 +216,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               {['写一段可爱的早安问候语', '解释一下为什么猫咪喜欢纸箱', '帮我策划一个奶油风的卧室', '给我的多肉植物起个名字'].map((suggestion, i) => (
                 <button 
                   key={i}
-                  onClick={() => setInput(suggestion)}
+                  onClick={() => !inputDisabled && setInput(suggestion)}
+                  disabled={inputDisabled}
                   style={{ animationDelay: `${0.3 + i * 0.1}s` }}
-                  className="group p-4 bg-white/70 dark:bg-night-card/50 border-2 border-transparent hover:border-cheese-300 dark:hover:border-starlight-500 rounded-[24px] shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform hover:-translate-y-1 hover:scale-[1.02] text-left animate-slide-up-bouncy"
+                  className="group p-4 bg-white/70 dark:bg-night-card/50 border-2 border-transparent hover:border-cheese-300 dark:hover:border-starlight-500 rounded-[24px] shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) transform hover:-translate-y-1 hover:scale-[1.02] text-left animate-slide-up-bouncy disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:scale-100"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <Wand2 size={16} className="text-cheese-500 dark:text-starlight-300 group-hover:rotate-12 transition-transform" />
@@ -231,18 +243,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         )}
         
         {isLoading && !hasStreamingMessage && (
-          <div className="flex gap-4 max-w-4xl mx-auto w-full animate-pop-in px-2">
-             <div className="w-10 h-10 rounded-[18px] bg-white dark:bg-night-card border-2 border-cheese-100 dark:border-white/10 flex items-center justify-center shadow-sm">
-               <Bot size={20} className="text-cheese-500 dark:text-starlight-300" />
-             </div>
-             <div className="flex items-center gap-1.5 h-12 px-6 bg-white dark:bg-night-card rounded-[24px] rounded-tl-none shadow-sm border border-cheese-50 dark:border-white/5">
-               <div className="w-2.5 h-2.5 bg-cheese-300 dark:bg-starlight-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-               <div className="w-2.5 h-2.5 bg-cheese-400 dark:bg-starlight-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-               <div className="w-2.5 h-2.5 bg-cheese-500 dark:bg-starlight-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-             </div>
+          <div className="max-w-4xl mx-auto w-full animate-pop-in px-2">
+            <div className="mx-auto w-fit flex items-center gap-1.5 rounded-full border border-white/70 dark:border-white/12 bg-white/88 dark:bg-night-card/88 px-4 py-2 shadow-soft dark:shadow-night backdrop-blur-md">
+              <div className="w-2 h-2 rounded-full bg-cheese-400 dark:bg-starlight-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 rounded-full bg-cheese-500 dark:bg-starlight-400 animate-bounce" style={{ animationDelay: '120ms' }} />
+              <div className="w-2 h-2 rounded-full bg-cheese-600 dark:bg-starlight-300 animate-bounce" style={{ animationDelay: '240ms' }} />
+              <span className="ml-1 text-[11px] font-bold text-warm-500 dark:text-slate-300">正在生成</span>
+            </div>
           </div>
         )}
-        <div ref={bottomRef} className="h-24 shrink-0 w-full" />
+        <div ref={bottomRef} className={`${bottomReserveClass} shrink-0 w-full`} />
       </div>
 
       {showScrollToBottom && (
@@ -347,11 +357,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
              <div className="flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-[20px] bg-white/92 dark:bg-night-surface/90 border border-slate-300/40 dark:border-[#3b4c72]/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-within:border-slate-400/60 dark:focus-within:border-starlight-400/55">
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2.5 text-warm-500 dark:text-starlight-300 hover:text-cheese-600 dark:hover:text-starlight-200 bg-white/55 dark:bg-night-card/70 hover:bg-white dark:hover:bg-night-card rounded-full transition-all active:scale-90 cubic-bezier(0.34, 1.56, 0.64, 1)"
+                  disabled={inputDisabled}
+                  className="p-2.5 text-warm-500 dark:text-starlight-300 hover:text-cheese-600 dark:hover:text-starlight-200 bg-white/55 dark:bg-night-card/70 hover:bg-white dark:hover:bg-night-card rounded-full transition-all active:scale-90 cubic-bezier(0.34, 1.56, 0.64, 1) disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/55 dark:disabled:hover:bg-night-card/70 disabled:hover:text-warm-500 dark:disabled:hover:text-starlight-300"
                 >
                   <Paperclip size={20} strokeWidth={2.4} />
                 </button>
-                <input type="file" hidden ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*, application/pdf, text/plain" />
+                <input type="file" hidden ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*, application/pdf, text/plain" disabled={inputDisabled} />
 
                 <textarea
                     ref={textareaRef}
@@ -360,9 +371,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     onKeyDown={handleKeyDown}
                     onCompositionStart={handleCompositionStart}
                     onCompositionEnd={handleCompositionEnd}
-                    placeholder="发个消息..."
+                    placeholder={modelInputPlaceholder}
                     className="w-full max-h-[132px] bg-transparent !border-none border-0 outline-none ring-0 focus:!border-none focus:border-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 resize-none py-2.5 px-1.5 text-warm-800 dark:text-slate-100 placeholder:text-warm-500 dark:placeholder:text-slate-500 text-[15px] leading-6 font-medium caret-cheese-500 dark:caret-starlight-300"
                     rows={1}
+                    disabled={inputDisabled}
                 />
                 
                 <Button 

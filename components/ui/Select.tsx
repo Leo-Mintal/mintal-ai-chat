@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, Search, Sparkles } from 'lucide-react';
+import { ChevronDown, Check, Search, Sparkles, Loader2 } from 'lucide-react';
 
 interface SelectOption {
   id: string;
@@ -14,14 +14,36 @@ interface SelectProps {
   onChange: (value: string) => void;
   label?: string;
   placeholder?: string;
+  isLoading?: boolean;
+  loadingText?: string;
+  emptyText?: string;
+  disabled?: boolean;
 }
 
-export const Select: React.FC<SelectProps> = ({ options, value, onChange, label, placeholder = "Select..." }) => {
+export const Select: React.FC<SelectProps> = ({
+  options,
+  value,
+  onChange,
+  label,
+  placeholder = "Select...",
+  isLoading = false,
+  loadingText = '加载中...',
+  emptyText = '暂无可用选项',
+  disabled = false,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find(opt => opt.id === value);
+  const isTriggerDisabled = disabled;
+  const triggerLabel = isLoading
+    ? loadingText
+    : selectedOption
+      ? selectedOption.name
+      : options.length === 0
+        ? emptyText
+        : placeholder;
 
   // Group options
   const groupedOptions = options.reduce((acc, option) => {
@@ -57,26 +79,37 @@ export const Select: React.FC<SelectProps> = ({ options, value, onChange, label,
       {/* Trigger Button - Enhanced Frosted Glass */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isTriggerDisabled) {
+            setIsOpen(!isOpen);
+          }
+        }}
+        disabled={isTriggerDisabled}
         className={`
           w-full bg-white/40 dark:bg-black/20 backdrop-blur-xl border-[2px]
           text-warm-800 dark:text-white text-sm font-bold rounded-[24px]
           focus:outline-none
           p-3 flex items-center justify-between transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1)
           shadow-sm hover:shadow-cheese-sm dark:hover:shadow-glow hover:scale-[1.02] active:scale-95
+          disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-sm disabled:active:scale-100
           ${isOpen
             ? 'border-cheese-300 dark:border-starlight-500 ring-4 ring-cheese-100 dark:ring-starlight-500/20 bg-white/60 dark:bg-black/40'
             : 'border-white/30 dark:border-white/10 hover:border-cheese-200 dark:hover:border-starlight-500/50 hover:bg-white/60 dark:hover:bg-black/30'
           }
         `}
       >
-        <span className={`flex items-center gap-2 ${selectedOption ? 'text-warm-800 dark:text-white' : 'text-warm-400'}`}>
-          {selectedOption ? selectedOption.name : placeholder}
+        <span className={`flex items-center gap-2 ${selectedOption ? 'text-warm-800 dark:text-white' : 'text-warm-400 dark:text-slate-300'}`}>
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin text-cheese-500 dark:text-starlight-400" strokeWidth={2.5} />}
+          {triggerLabel}
         </span>
-        <ChevronDown className={`w-4 h-4 text-warm-400 transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isOpen ? 'rotate-180 text-cheese-500 dark:text-starlight-500 scale-125' : ''}`} strokeWidth={2.5} />
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin text-cheese-500 dark:text-starlight-400" strokeWidth={2.5} />
+        ) : (
+          <ChevronDown className={`w-4 h-4 text-warm-400 transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isOpen ? 'rotate-180 text-cheese-500 dark:text-starlight-500 scale-125' : ''}`} strokeWidth={2.5} />
+        )}
       </button>
 
-      {isOpen && (
+      {isOpen && !isTriggerDisabled && (
         <div className="absolute z-50 w-full mt-2 bg-white/70 dark:bg-night-card/70 backdrop-blur-xl border-[3px] border-white dark:border-white/10 rounded-[28px] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-night animate-pop-in origin-top overflow-hidden ring-1 ring-black/5 dark:ring-white/5 p-2">
 
           {/* Search Box - Frosted */}
@@ -98,7 +131,7 @@ export const Select: React.FC<SelectProps> = ({ options, value, onChange, label,
             {Object.keys(filteredGroups).length === 0 ? (
               <div className="px-3 py-6 text-xs font-bold text-warm-300 text-center flex flex-col items-center gap-2">
                 <Sparkles size={16} />
-                <span>没有找到这个模型哦</span>
+                <span>{options.length === 0 ? emptyText : '没有找到这个模型哦'}</span>
               </div>
             ) : (
               Object.keys(filteredGroups).map(group => (
