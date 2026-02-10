@@ -160,6 +160,7 @@ const App: React.FC = () => {
   const [currentModel, setCurrentModel] = useState<string>('');
   const [modelOptionsLoading, setModelOptionsLoading] = useState(true);
   const [modelOptionsError, setModelOptionsError] = useState('');
+  const [thinkEnabled, setThinkEnabled] = useState(true);
   const [theme, setTheme] = useState<Theme>('system');
   const [aiBubbleEnabled, setAiBubbleEnabled] = useState<boolean>(() => loadAiBubblePreference());
 
@@ -742,6 +743,7 @@ const App: React.FC = () => {
     try {
       const response = await generateChatResponse(currentModel, history, userMessage, attachments, user, {
         conversationId: backendConversationId,
+        thinkEnabled,
         onConversationId: (conversationId) => {
           syncBackendConversationId(conversationId);
         },
@@ -993,13 +995,13 @@ const App: React.FC = () => {
           <div className="flex-1 flex flex-col h-full bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden relative animate-pop-in origin-center group transition-all duration-500">
 
             {/* Header with Frosted Glass Buttons */}
-            <header className="h-20 flex items-center justify-between px-6 z-20 shrink-0">
-              <div className="flex items-center gap-4">
+            <header className="h-[74px] sm:h-20 flex items-center gap-2.5 sm:gap-4 px-3 sm:px-6 z-20 shrink-0">
+              <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
 
                 {/* Mobile Menu Button - Frosted Glass */}
                 <button
                   onClick={() => setIsSidebarOpen(true)}
-                  className="lg:hidden p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
+                  className="lg:hidden shrink-0 p-2.5 sm:p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
                 >
                   <Menu size={20} strokeWidth={2.5} />
                 </button>
@@ -1008,13 +1010,13 @@ const App: React.FC = () => {
                 {!isDesktopSidebarOpen && (
                   <button
                     onClick={() => setIsDesktopSidebarOpen(true)}
-                    className="hidden lg:flex p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
+                    className="hidden lg:flex shrink-0 p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
                   >
                     <PanelLeftOpen size={20} strokeWidth={2.5} />
                   </button>
                 )}
 
-                <div className="w-56">
+                <div className="min-w-0 flex-1 sm:flex-none sm:w-56">
                   <Select options={modelOptions} value={currentModel} onChange={setCurrentModel} placeholder="选择模型" isLoading={modelOptionsLoading} emptyText={modelOptionsError || '暂无可用模型'} disabled={modelOptionsLoading || modelOptions.length === 0} />
                 </div>
               </div>
@@ -1023,7 +1025,7 @@ const App: React.FC = () => {
               <button
                  onClick={() => setModalOpen('confirm_delete')}
                  disabled={!activeConvId || !messages[activeConvId]?.length}
-                 className="p-3 text-warm-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:bg-red-50 dark:hover:bg-red-900/20"
+                 className="shrink-0 p-2.5 sm:p-3 ml-1 sm:ml-0 text-warm-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:bg-red-50 dark:hover:bg-red-900/20"
               >
                 <Trash2 size={20} strokeWidth={2.5} />
               </button>
@@ -1041,6 +1043,8 @@ const App: React.FC = () => {
                 quotaError={quotaError}
                 onRefreshQuota={() => void syncUserQuota(user)}
                 aiBubbleEnabled={aiBubbleEnabled}
+                thinkEnabled={thinkEnabled}
+                onThinkEnabledChange={setThinkEnabled}
                 inputDisabled={modelOptionsLoading || !currentModel}
                 inputDisabledHint={modelOptionsLoading ? '模型加载中，请稍候…' : modelOptionsError || '暂无可用模型，请先配置模型'}
               />

@@ -33,6 +33,7 @@ interface GenerateChatResponseOptions {
   onDelta?: (state: StreamState) => void;
   onConversationId?: (conversationId: number) => void;
   conversationId?: number;
+  thinkEnabled?: boolean;
 }
 
 export interface GenerateChatResponseResult {
@@ -44,6 +45,22 @@ export interface GenerateChatResponseResult {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:18080/api/v1').replace(/\/$/, '');
+
+const BACKEND_CHAT_TIMEOUT_MS = 300_000;
+const DEFAULT_FRONTEND_CHAT_TIMEOUT_MS = 600_000;
+
+const resolveFrontendChatTimeoutMs = (): number => {
+  const raw = import.meta.env.VITE_LLM_CHAT_TIMEOUT_MS;
+  const parsed = Number(raw);
+
+  if (Number.isFinite(parsed) && parsed > BACKEND_CHAT_TIMEOUT_MS) {
+    return Math.round(parsed);
+  }
+
+  return DEFAULT_FRONTEND_CHAT_TIMEOUT_MS;
+};
+
+const FRONTEND_CHAT_TIMEOUT_MS = resolveFrontendChatTimeoutMs();
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null;
@@ -315,6 +332,14 @@ const resolveApiErrorMessage = (payload: unknown, status: number): string => {
 };
 
 const mapChatError = (error: unknown): Error => {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return new Error(`聊天请求超时（前端 ${Math.ceil(FRONTEND_CHAT_TIMEOUT_MS / 1000)} 秒），请稍后重试`);
+  }
+
+  if (error instanceof Error && error.name === 'AbortError') {
+    return new Error(`聊天请求超时（前端 ${Math.ceil(FRONTEND_CHAT_TIMEOUT_MS / 1000)} 秒），请稍后重试`);
+  }
+
   if (error instanceof HttpClientError) {
     const resolvedStatus = error.status >= 400 ? error.status : error.code;
 
@@ -419,7 +444,7 @@ export const generateChatResponse = async (
     user_id: resolveNumericUserId(user),
     model: modelId,
     stream: true,
-    think: true,
+    think: options.thinkEnabled ?? true,
     messages: buildChatMessages(history, currentMessage, attachments),
   };
 
@@ -428,6 +453,11 @@ export const generateChatResponse = async (
     payload.conversation_id = normalizedConversationId;
   }
 
+  const abortController = new AbortController();
+  const timeoutTimer = window.setTimeout(() => {
+    abortController.abort();
+  }, FRONTEND_CHAT_TIMEOUT_MS);
+
   try {
     const response = await fetch(buildUrl('/llm/chat'), {
       method: 'POST',
@@ -435,6 +465,7 @@ export const generateChatResponse = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: abortController.signal,
     });
 
     if (!response.ok) {
@@ -538,5 +569,7 @@ export const generateChatResponse = async (
     };
   } catch (error) {
     throw mapChatError(error);
+  } finally {
+    window.clearTimeout(timeoutTimer);
   }
 };

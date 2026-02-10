@@ -4,6 +4,7 @@ import { Message, Attachment, User } from '../types';
 import type { UserQuotaSummary } from '../services/adminService';
 import { Paperclip, X, Sparkles, Wand2, Pencil, ArrowUp, ArrowDown, ChevronDown, Bot, Copy, Check, Star, Heart, Gauge, RefreshCcw } from 'lucide-react';
 import { Button } from './ui/Button';
+import { Switch } from './ui/Switch';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -16,6 +17,8 @@ interface ChatAreaProps {
   quotaError?: string;
   onRefreshQuota?: () => void;
   aiBubbleEnabled: boolean;
+  thinkEnabled: boolean;
+  onThinkEnabledChange?: (enabled: boolean) => void;
   inputDisabled?: boolean;
   inputDisabledHint?: string;
 }
@@ -31,6 +34,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   quotaError,
   onRefreshQuota,
   aiBubbleEnabled,
+  thinkEnabled,
+  onThinkEnabledChange,
   inputDisabled = false,
   inputDisabledHint,
 }) => {
@@ -180,15 +185,19 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const modelInputPlaceholder = inputDisabled
     ? (inputDisabledHint || '当前暂无可用模型，请稍后再试')
     : '发个消息...';
+  const thinkStatusText = thinkEnabled ? '开启 ' : '关闭 ';
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !isLoading && !inputDisabled;
   const shouldReserveBottomSpace = messages.length > 0 || isLoading;
   const bottomReserveClass = shouldReserveBottomSpace
     ? (showQuotaCard ? 'h-56 sm:h-60' : 'h-44 sm:h-48')
     : 'h-0';
+  const scrollToBottomButtonPositionClass = showQuotaCard
+    ? 'bottom-[176px] sm:bottom-[132px]'
+    : 'bottom-[118px] sm:bottom-[132px]';
 
   return (
     <div className="flex flex-col h-full relative z-0">
-      <div ref={scrollContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6 scroll-smooth custom-scrollbar">
+      <div ref={scrollContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:p-6 space-y-5 sm:space-y-6 scroll-smooth custom-scrollbar">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center relative">
              {/* Decorative Elements for Empty State */}
@@ -204,17 +213,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <Sparkles size={48} className="text-cheese-500 dark:text-starlight-300 drop-shadow-sm" />
               </div>
             </div>
-            
+
             <h2 className="text-3xl font-extrabold text-warm-800 dark:text-white mb-3 tracking-tight animate-slide-up-bouncy relative z-10" style={{ animationDelay: '0.1s' }}>
               嗨！今天想聊点什么？
             </h2>
             <p className="text-warm-500 dark:text-starlight-100 mb-10 font-medium animate-slide-up-bouncy relative z-10" style={{ animationDelay: '0.2s' }}>
               我像果冻一样软萌，但依然聪明绝顶哦~
             </p>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl w-full px-4 relative z-10">
               {['写一段可爱的早安问候语', '解释一下为什么猫咪喜欢纸箱', '帮我策划一个奶油风的卧室', '给我的多肉植物起个名字'].map((suggestion, i) => (
-                <button 
+                <button
                   key={i}
                   onClick={() => !inputDisabled && setInput(suggestion)}
                   disabled={inputDisabled}
@@ -241,7 +250,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             />
           ))
         )}
-        
+
         {isLoading && !hasStreamingMessage && (
           <div className="max-w-4xl mx-auto w-full animate-pop-in px-2">
             <div className="mx-auto w-fit flex items-center gap-1.5 rounded-full border border-white/70 dark:border-white/12 bg-white/88 dark:bg-night-card/88 px-4 py-2 shadow-soft dark:shadow-night backdrop-blur-md">
@@ -259,7 +268,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         <button
           type="button"
           onClick={handleScrollToBottomClick}
-          className="absolute bottom-[132px] right-6 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/70 dark:border-white/15 bg-white/95 dark:bg-night-card/95 px-3 py-1.5 text-xs font-bold text-warm-700 dark:text-slate-100 shadow-soft backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-cheese-sm dark:hover:shadow-glow"
+          className={`absolute ${scrollToBottomButtonPositionClass} left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/70 dark:border-white/15 bg-white/95 dark:bg-night-card/95 px-3 py-1.5 text-xs font-bold text-warm-700 dark:text-slate-100 shadow-soft backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-cheese-sm dark:hover:shadow-glow`}
         >
           <ArrowDown size={14} />
           回到底部
@@ -334,9 +343,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           )}
 
           <div className={`
-             bg-white/94 dark:bg-night-card/92 backdrop-blur-xl rounded-[30px] 
-             shadow-[0_12px_30px_-12px_rgba(0,0,0,0.16)] dark:shadow-[0_16px_36px_-18px_rgba(2,8,23,0.85)] 
-             border-[2px] border-white/75 dark:border-white/10 
+             bg-white/94 dark:bg-night-card/92 backdrop-blur-xl rounded-[30px]
+             shadow-[0_12px_30px_-12px_rgba(0,0,0,0.16)] dark:shadow-[0_16px_36px_-18px_rgba(2,8,23,0.85)]
+             border-[2px] border-white/75 dark:border-white/10
              transition-all duration-300 p-1.5 flex flex-col gap-1.5
              ${isLoading ? 'opacity-90 grayscale' : 'hover:shadow-[0_18px_40px_-14px_rgba(255,167,38,0.2)] dark:hover:shadow-[0_20px_45px_-20px_rgba(14,165,233,0.5)]'}
              focus-within:border-slate-300/70 dark:focus-within:border-starlight-400/55
@@ -354,44 +363,63 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
             )}
 
-             <div className="flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-[20px] bg-white/92 dark:bg-night-surface/90 border border-slate-300/40 dark:border-[#3b4c72]/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-within:border-slate-400/60 dark:focus-within:border-starlight-400/55">
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={inputDisabled}
-                  className="p-2.5 text-warm-500 dark:text-starlight-300 hover:text-cheese-600 dark:hover:text-starlight-200 bg-white/55 dark:bg-night-card/70 hover:bg-white dark:hover:bg-night-card rounded-full transition-all active:scale-90 cubic-bezier(0.34, 1.56, 0.64, 1) disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/55 dark:disabled:hover:bg-night-card/70 disabled:hover:text-warm-500 dark:disabled:hover:text-starlight-300"
-                >
-                  <Paperclip size={20} strokeWidth={2.4} />
-                </button>
-                <input type="file" hidden ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*, application/pdf, text/plain" disabled={inputDisabled} />
+             <div className="flex flex-col gap-1.5 pl-1.5 pr-2 py-1 rounded-[20px] bg-white/92 dark:bg-night-surface/90 border border-slate-300/40 dark:border-[#3b4c72]/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-within:border-slate-400/60 dark:focus-within:border-starlight-400/55">
+               <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
+                 <div className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-white/60 dark:border-white/12 bg-white/74 dark:bg-night-card/64 backdrop-blur-sm px-2.5 py-1 shadow-soft dark:shadow-night transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5">
+                   <span className="text-[10px] font-black text-warm-600 dark:text-starlight-200 whitespace-nowrap">深度思考</span>
+                   <Switch
+                     checked={thinkEnabled}
+                     onChange={(checked) => onThinkEnabledChange?.(checked)}
+                     disabled={isLoading || !onThinkEnabledChange}
+                     size="lgMobile"
+                     className="scale-[0.92] sm:scale-100 transition-transform duration-300"
+                   />
+                   <span className="text-[10px] font-bold text-warm-500 dark:text-starlight-300 whitespace-nowrap">{thinkStatusText}</span>
+                 </div>
+                 {isLoading && (
+                   <span className="shrink-0 pr-1 text-[10px] font-semibold text-warm-400 dark:text-slate-400">生成中</span>
+                 )}
+               </div>
 
-                <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onCompositionStart={handleCompositionStart}
-                    onCompositionEnd={handleCompositionEnd}
-                    placeholder={modelInputPlaceholder}
-                    className="w-full max-h-[132px] bg-transparent !border-none border-0 outline-none ring-0 focus:!border-none focus:border-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 resize-none py-2.5 px-1.5 text-warm-800 dark:text-slate-100 placeholder:text-warm-500 dark:placeholder:text-slate-500 text-[15px] leading-6 font-medium caret-cheese-500 dark:caret-starlight-300"
-                    rows={1}
-                    disabled={inputDisabled}
-                />
-                
-                <Button 
-                  size="icon" 
-                  onClick={handleSend}
-                  disabled={!canSend}
-                  className={`
-                    !w-10 !h-10 min-w-10 min-h-10 aspect-square !rounded-full p-0 mx-0.5 border-2 ring-1 transition-all duration-300 text-white
-                    disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:scale-100 disabled:hover:shadow-none
-                    ${canSend
-                      ? "bg-gradient-to-br from-cheese-400 via-cheese-500 to-cheese-600 dark:from-starlight-400 dark:via-starlight-500 dark:to-starlight-600 border-white/70 dark:border-white/35 ring-slate-300/35 dark:ring-starlight-300/35 shadow-[0_0_0_2px_rgba(255,255,255,0.12),0_8px_18px_-10px_rgba(37,99,235,0.45)] dark:shadow-[0_0_0_2px_rgba(255,255,255,0.06),0_10px_20px_-12px_rgba(14,165,233,0.75)] hover:scale-[1.05] hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
-                      : "bg-slate-200/75 dark:bg-white/[0.10] border-slate-300/55 dark:border-white/20 ring-slate-200/50 dark:ring-white/8 shadow-[0_0_0_2px_rgba(255,255,255,0.08)] dark:shadow-[0_0_0_2px_rgba(255,255,255,0.03)]"
-                    }
-                  `}
-                >
-                  <ArrowUp size={18} strokeWidth={2.6} className="text-white" />
-                </Button>
+               <div className="flex items-center gap-2">
+                 <button
+                   onClick={() => fileInputRef.current?.click()}
+                   disabled={inputDisabled}
+                   className="p-2.5 text-warm-500 dark:text-starlight-300 hover:text-cheese-600 dark:hover:text-starlight-200 bg-white/55 dark:bg-night-card/70 hover:bg-white dark:hover:bg-night-card rounded-full transition-all active:scale-90 cubic-bezier(0.34, 1.56, 0.64, 1) disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/55 dark:disabled:hover:bg-night-card/70 disabled:hover:text-warm-500 dark:disabled:hover:text-starlight-300"
+                 >
+                   <Paperclip size={20} strokeWidth={2.4} />
+                 </button>
+                 <input type="file" hidden ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*, application/pdf, text/plain" disabled={inputDisabled} />
+
+                 <textarea
+                     ref={textareaRef}
+                     value={input}
+                     onChange={(e) => setInput(e.target.value)}
+                     onKeyDown={handleKeyDown}
+                     onCompositionStart={handleCompositionStart}
+                     onCompositionEnd={handleCompositionEnd}
+                     placeholder={modelInputPlaceholder}
+                     className="w-full max-h-[132px] bg-transparent !border-none border-0 outline-none ring-0 focus:!border-none focus:border-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 resize-none py-2.5 px-1.5 text-warm-800 dark:text-slate-100 placeholder:text-warm-500 dark:placeholder:text-slate-500 text-[15px] leading-6 font-medium caret-cheese-500 dark:caret-starlight-300"
+                     rows={1}
+                     disabled={inputDisabled}
+                 />
+
+                 <Button
+                   size="icon"
+                   onClick={handleSend}
+                   disabled={!canSend}
+                   className={`
+                     !w-10 !h-10 min-w-10 min-h-10 aspect-square !rounded-full p-0 mx-0.5 border-2 ring-1 transition-all duration-300 text-white
+                     disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:scale-100 disabled:hover:shadow-none
+                     ${canSend
+                       ? "bg-gradient-to-br from-cheese-400 via-cheese-500 to-cheese-600 dark:from-starlight-400 dark:via-starlight-500 dark:to-starlight-600 border-white/70 dark:border-white/35 ring-slate-300/35 dark:ring-starlight-300/35 shadow-[0_0_0_2px_rgba(255,255,255,0.12),0_8px_18px_-10px_rgba(37,99,235,0.45)] dark:shadow-[0_0_0_2px_rgba(255,255,255,0.06),0_10px_20px_-12px_rgba(14,165,233,0.75)] hover:scale-[1.05] hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                       : "bg-slate-200/75 dark:bg-white/[0.10] border-slate-300/55 dark:border-white/20 ring-slate-200/50 dark:ring-white/8 shadow-[0_0_0_2px_rgba(255,255,255,0.08)] dark:shadow-[0_0_0_2px_rgba(255,255,255,0.03)]"
+                     }
+                   `}
+                 >
+                   <ArrowUp size={18} strokeWidth={2.6} className="text-white" />
+                 </Button>
+               </div>
              </div>
           </div>
         </div>
@@ -564,27 +592,65 @@ const MessageBubble: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(() => Boolean(message.isStreaming));
   const [editContent, setEditContent] = useState(message.content);
+  const [isLongUserContent, setIsLongUserContent] = useState(false);
+  const [isUserContentExpanded, setIsUserContentExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const userContentRef = useRef<HTMLDivElement>(null);
   const previousStreamingRef = useRef(Boolean(message.isStreaming));
   const thinkingContent = message.thinking?.trim();
-  const hasThinkingPanel = !isUser && (Boolean(thinkingContent) || Boolean(message.isStreaming));
+  const hasThinkingPanel = !isUser && Boolean(thinkingContent);
   const showMessageBubble = isUser || aiBubbleEnabled;
   const renderableContent = useMemo(
     () => normalizeStreamingMarkdown(message.content, Boolean(message.isStreaming) && !isUser),
     [isUser, message.content, message.isStreaming],
   );
+  const isEditingUserBubble = isEditing && isUser && showMessageBubble;
+  const showStreamingDots = !isUser && message.isStreaming && !hasThinkingPanel && renderableContent.trim().length === 0;
+  const userMessageCollapseHeight = 260;
+  const shouldCollapseUserContent = isUser && !isEditing && isLongUserContent && !isUserContentExpanded;
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
-        // Auto resize functionality for edit textarea
+        const MIN_HEIGHT = 140;
+        const MAX_HEIGHT = 360;
         textareaRef.current.style.height = 'auto';
-        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        const nextHeight = Math.min(Math.max(textareaRef.current.scrollHeight, MIN_HEIGHT), MAX_HEIGHT);
+        textareaRef.current.style.height = `${nextHeight}px`;
+        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
     }
   }, [editContent, isEditing]);
 
   useEffect(() => {
     setEditContent(message.content);
   }, [message.content]);
+
+  useEffect(() => {
+    if (isUser) {
+      setIsUserContentExpanded(false);
+    }
+  }, [isUser, message.id, message.content]);
+
+  useEffect(() => {
+    if (!isUser || isEditing) {
+      setIsLongUserContent(false);
+      return;
+    }
+
+    const node = userContentRef.current;
+    if (!node) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const shouldFold = node.scrollHeight > userMessageCollapseHeight;
+      setIsLongUserContent(shouldFold);
+      if (!shouldFold) {
+        setIsUserContentExpanded(false);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isUser, isEditing, message.id, renderableContent, userMessageCollapseHeight]);
 
   useEffect(() => {
     const wasStreaming = previousStreamingRef.current;
@@ -615,21 +681,21 @@ const MessageBubble: React.FC<{
   };
 
   return (
-    <div className={`flex gap-5 sm:gap-6 max-w-4xl mx-auto w-full min-w-0 group animate-slide-up-bouncy ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`flex max-w-4xl mx-auto w-full min-w-0 group animate-slide-up-bouncy ${isUser ? 'flex-row-reverse gap-4 sm:gap-6' : 'gap-2.5 sm:gap-6 -ml-1 sm:ml-0'}`}>
       <div className={`
-        w-10 h-10 rounded-[18px] flex items-center justify-center shrink-0 shadow-sm border-2 overflow-hidden transform hover:scale-110 transition-transform duration-300 cubic-bezier(0.34, 1.56, 0.64, 1)
-        ${isUser 
-          ? 'bg-cheese-100 border-cheese-200 dark:bg-slate-700 dark:border-slate-600' 
+        w-9 h-9 sm:w-10 sm:h-10 rounded-2xl sm:rounded-[18px] flex items-center justify-center shrink-0 shadow-sm border-2 overflow-hidden transform hover:scale-110 transition-transform duration-300 cubic-bezier(0.34, 1.56, 0.64, 1)
+        ${isUser
+          ? 'bg-cheese-100 border-cheese-200 dark:bg-slate-700 dark:border-slate-600'
           : 'bg-white dark:bg-night-card border-cheese-100 dark:border-white/10 text-cheese-500 dark:text-starlight-300'
         }
       `}>
         {isUser ? (
            <img src={user?.avatar} alt="User" className="w-full h-full object-cover" />
-        ) : <Bot size={24} />}
+        ) : <Bot size={20} className="sm:w-6 sm:h-6" />}
       </div>
 
-      <div className={`relative min-w-0 flex flex-col ${showMessageBubble ? 'max-w-[85%]' : 'flex-1 max-w-none'} ${isUser ? 'items-end' : 'items-start'}`}>
-        <div className={`mb-2 text-xs font-bold text-warm-400 dark:text-slate-500 px-2.5 ${isUser ? 'text-right' : 'text-left'}`}>
+      <div className={`relative min-w-0 flex flex-col ${showMessageBubble ? (isEditingUserBubble ? 'w-full max-w-full sm:max-w-[85%]' : 'max-w-[85%]') : 'flex-1 max-w-none'} ${isUser ? 'items-end' : 'items-start'}`}>
+        <div className={`mb-2 text-xs font-bold text-warm-400 dark:text-slate-500 ${isUser ? 'text-right px-2.5' : showMessageBubble ? 'text-left px-2.5' : 'text-left px-0'}`}>
            {isUser ? user?.name : 'Mintal AI'}
         </div>
 
@@ -664,7 +730,7 @@ const MessageBubble: React.FC<{
         <div className={`
           relative transition-all duration-300 max-w-full min-w-0
           ${showMessageBubble
-            ? `px-4 py-3 rounded-[24px] text-[14px] leading-[1.5] shadow-sm w-fit hover:scale-[1.01] ${isUser
+            ? `px-4 py-3 rounded-[24px] text-[14px] leading-[1.5] shadow-sm ${isEditingUserBubble ? 'w-full max-w-full sm:min-w-[360px] sm:max-w-[680px]' : 'w-fit'} ${isEditing ? '' : 'hover:scale-[1.01]'} ${isUser
               ? 'bg-gradient-to-br from-cheese-400 to-cheese-500 dark:from-starlight-500 dark:to-starlight-600 text-white rounded-tr-none shadow-cheese-sm dark:shadow-glow'
               : 'bg-white/80 dark:bg-night-card/80 backdrop-blur-sm border-2 border-white/50 dark:border-white/5 text-warm-800 dark:text-slate-100 rounded-tl-none shadow-soft'
             }`
@@ -674,32 +740,65 @@ const MessageBubble: React.FC<{
           {message.attachments?.map((att, i) => (
              att.type.startsWith('image/') && <img key={i} src={att.data} className={`rounded-xl mb-2.5 max-h-56 shadow-sm ${showMessageBubble ? 'border border-white/20' : 'border border-cheese-200/60 dark:border-white/10'}`} />
           ))}
-          
+
           {isEditing ? (
-              <div key="edit-mode" className="flex flex-col gap-2 w-full animate-pop-in origin-center">
-                  <textarea 
+              <div key="edit-mode" className="flex flex-col gap-2.5 w-full animate-pop-in origin-center rounded-[22px] bg-white/28 dark:bg-night-card/58 backdrop-blur-md border-2 border-white/45 dark:border-white/12 shadow-soft dark:shadow-night p-3">
+                  <textarea
                     ref={textareaRef}
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    className="w-full min-w-0 bg-white/20 rounded-lg p-2 text-white placeholder-white/70 outline-none resize-none border border-white/30 focus:bg-white/30 transition-colors"
+                    className="w-full min-w-0 min-h-[140px] max-h-[55vh] overflow-y-auto bg-white/55 dark:bg-black/20 rounded-[16px] px-3 py-2.5 text-white placeholder-white/70 outline-none resize-none border-2 border-white/55 dark:border-white/12 focus:bg-white/68 dark:focus:bg-black/28 focus:shadow-cheese-sm dark:focus:shadow-glow transition-all duration-300 leading-6"
                   />
-                  <div className="flex justify-end gap-2 mt-1 animate-slide-up-bouncy" style={{ animationDelay: '0.1s' }}>
-                      <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-xs bg-white/20 hover:bg-white/30 rounded-full transition-colors font-medium">取消</button>
-                      <button onClick={handleSaveEdit} className="px-3 py-1 text-xs bg-white text-cheese-600 dark:text-starlight-600 font-bold rounded-full shadow-sm hover:scale-105 transition-transform">保存</button>
+                  <div className="flex flex-wrap justify-end gap-2 mt-1 animate-slide-up-bouncy" style={{ animationDelay: '0.1s' }}>
+                      <button onClick={() => setIsEditing(false)} className="min-w-[74px] px-3.5 py-1.5 text-xs bg-white/35 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/18 rounded-full border border-white/45 dark:border-white/15 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:scale-[1.03] active:scale-95 font-bold">取消</button>
+                      <button onClick={handleSaveEdit} className="min-w-[74px] px-3.5 py-1.5 text-xs bg-white text-cheese-600 dark:text-starlight-600 font-bold rounded-full shadow-cheese-sm dark:shadow-glow transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:scale-[1.04] active:scale-95">保存</button>
                   </div>
               </div>
-          ) : (
-            <div className="markdown-content font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                <ReactMarkdown components={markdownRenderers}>{renderableContent}</ReactMarkdown>
-                {message.isStreaming && !isUser && (
-                  <span className="inline-block ml-1 w-2 h-5 align-middle bg-cheese-400 dark:bg-starlight-400 rounded animate-pulse" />
-                )}
+          ) : showStreamingDots ? (
+            <div className="inline-flex items-center gap-1.5 py-0.5 leading-none animate-pop-in">
+              <span className="h-2.5 w-2.5 rounded-full bg-cheese-400 dark:bg-starlight-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="h-2.5 w-2.5 rounded-full bg-cheese-500 dark:bg-starlight-400 animate-bounce" style={{ animationDelay: '120ms' }} />
+              <span className="h-2.5 w-2.5 rounded-full bg-cheese-600 dark:bg-starlight-300 animate-bounce" style={{ animationDelay: '240ms' }} />
             </div>
+          ) : (
+            <>
+              <div className="relative">
+                <div
+                  ref={isUser ? userContentRef : undefined}
+                  className={`markdown-content font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${shouldCollapseUserContent ? 'max-h-[260px] overflow-hidden pr-0.5' : ''}`}
+                >
+                  <ReactMarkdown components={markdownRenderers}>{renderableContent}</ReactMarkdown>
+                  {message.isStreaming && !isUser && !showStreamingDots && (
+                    <span className="inline-flex items-center gap-1 ml-1.5 align-middle">
+                      <span className="h-1.5 w-1.5 rounded-full bg-cheese-400 dark:bg-starlight-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-cheese-500 dark:bg-starlight-400 animate-bounce" style={{ animationDelay: '110ms' }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-cheese-600 dark:bg-starlight-300 animate-bounce" style={{ animationDelay: '220ms' }} />
+                    </span>
+                  )}
+                </div>
+                {shouldCollapseUserContent && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 rounded-b-[20px] bg-gradient-to-t from-cheese-500/56 via-cheese-400/22 to-transparent dark:from-starlight-600/60 dark:via-starlight-500/24 dark:to-transparent" />
+                )}
+              </div>
+
+              {isUser && isLongUserContent && !message.isStreaming && (
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsUserContentExpanded((prev) => !prev)}
+                    className="group/fold inline-flex items-center gap-1.5 rounded-full border-2 border-white/55 dark:border-white/15 bg-white/28 dark:bg-white/10 backdrop-blur-sm px-3 py-1.5 text-[11px] font-bold text-white shadow-soft transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:scale-[1.03] hover:bg-white/38 dark:hover:bg-white/16 active:scale-95"
+                  >
+                    {isUserContentExpanded ? '收起内容' : '展开内容'}
+                    <ChevronDown size={13} className={`transition-transform duration-200 group-hover/fold:scale-110 ${isUserContentExpanded ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
-        
+
         {/* Actions (Copy/Edit) */}
-        <div className={`mt-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isUser ? 'pr-2.5' : 'pl-2.5'}`}>
+        <div className={`mt-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isUser ? 'pr-2.5' : showMessageBubble ? 'pl-2.5' : 'pl-0'}`}>
             <button onClick={handleCopy} className="p-1.5 text-warm-400 hover:text-cheese-500 dark:hover:text-starlight-300 bg-white/50 dark:bg-white/5 rounded-full hover:bg-white dark:hover:bg-white/10 transition-colors hover:scale-110 active:scale-90">
               {copied ? <Check size={14} /> : <Copy size={14} />}
             </button>

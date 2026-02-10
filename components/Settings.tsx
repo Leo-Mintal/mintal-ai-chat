@@ -42,7 +42,7 @@ export const Settings: React.FC<SettingsProps> = ({
         {/* Appearance Section */}
         <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <h3 className="text-sm font-bold text-slate-900 dark:text-starlight-100 mb-4 px-1 uppercase tracking-wider flex items-center gap-2">
-            <Laptop size={14} className="text-cheese-500 dark:text-starlight-500" /> 外观
+            <Laptop size={14} className="text-cheese-500 dark:text-starlight-500" /> 样式配置
           </h3>
           <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300">
             <div className="p-5 sm:p-6 flex items-center justify-between">
@@ -73,12 +73,12 @@ export const Settings: React.FC<SettingsProps> = ({
                 ))}
               </div>
             </div>
-            <div className="p-5 sm:p-6 flex items-center justify-between border-t border-slate-100 dark:border-white/5">
-              <div>
-                <div className="font-bold text-slate-800 dark:text-slate-200">AI 回复聊天框</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">开启后 AI 回复显示气泡边框；默认关闭，仅用户消息显示气泡。</div>
+            <div className="p-5 sm:p-6 flex items-start sm:items-center justify-between gap-3 border-t border-slate-100 dark:border-white/5">
+              <div className="min-w-0 pr-1.5">
+                <div className="font-bold text-slate-800 dark:text-slate-200">聊天框样式</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">控制 AI 回复是否使用聊天框气泡。开启显示气泡，关闭则全宽展示。</div>
               </div>
-              <Switch checked={aiBubbleEnabled} onChange={setAiBubbleEnabled} />
+              <Switch checked={aiBubbleEnabled} onChange={setAiBubbleEnabled} size="lgMobile" className="mt-0.5 sm:mt-0" />
             </div>
           </div>
         </section>
@@ -112,13 +112,17 @@ export const Settings: React.FC<SettingsProps> = ({
             <Shield size={14} className="text-green-500 dark:text-green-400" /> 隐私与数据
           </h3>
           <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300">
-             <div className="p-5 sm:p-6 flex items-center justify-between">
-               <div>
+            <div className="p-5 sm:p-6 flex flex-col items-stretch sm:flex-row sm:items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
                 <div className="font-bold text-slate-800 dark:text-slate-200">清除所有本地缓存</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">删除浏览器中存储的所有对话历史和设置</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">删除浏览器中存储的所有对话历史和设置</div>
               </div>
-              <Button variant="secondary" size="sm" className="text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10 dark:border-red-900/30 dark:text-red-400 rounded-xl">
-                 清除数据
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full sm:w-auto sm:min-w-[112px] h-10 whitespace-nowrap text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10 dark:border-red-900/30 dark:text-red-400 rounded-2xl sm:rounded-xl"
+              >
+                清除数据
               </Button>
             </div>
           </div>
@@ -130,16 +134,15 @@ export const Settings: React.FC<SettingsProps> = ({
             <Gauge size={14} className="text-cheese-500 dark:text-starlight-400" /> 用量管理
           </h3>
           <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300">
-            <div className="p-5 sm:p-6 flex items-center justify-between gap-4">
-              <div>
-                <div className="font-bold text-slate-800 dark:text-slate-200">管理账号调用次数</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">进入后可通过管理员验证，为指定用户发放模型调用额度。</div>
+            <div className="p-5 sm:p-6 flex flex-col items-stretch sm:flex-row sm:items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-slate-800 dark:text-slate-200">额度配置</div>
               </div>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={onNavigateToUsageManagement}
-                className="rounded-xl whitespace-nowrap"
+                className="w-full sm:w-auto rounded-2xl sm:rounded-xl whitespace-nowrap"
               >
                 进入用量管理
               </Button>
