@@ -44,13 +44,21 @@ export interface GenerateChatResponseResult {
   conversationId?: number;
 }
 
+<<<<<<< HEAD
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:18080/api/v1').replace(/\/$/, '');
+=======
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://127.0.0.1:18080/api/v1').replace(/\/$/, '');
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
 
 const BACKEND_CHAT_TIMEOUT_MS = 300_000;
 const DEFAULT_FRONTEND_CHAT_TIMEOUT_MS = 600_000;
 
 const resolveFrontendChatTimeoutMs = (): number => {
+<<<<<<< HEAD
   const raw = import.meta.env.VITE_LLM_CHAT_TIMEOUT_MS;
+=======
+  const raw = import.meta.env?.VITE_LLM_CHAT_TIMEOUT_MS;
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
   const parsed = Number(raw);
 
   if (Number.isFinite(parsed) && parsed > BACKEND_CHAT_TIMEOUT_MS) {
@@ -572,4 +580,8 @@ export const generateChatResponse = async (
   } finally {
     window.clearTimeout(timeoutTimer);
   }
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)

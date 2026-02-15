@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 /// <reference types="vite/client" />
+=======
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;

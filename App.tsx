@@ -1,27 +1,56 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Auth } from './components/Auth';
-import { Sidebar } from './components/Sidebar';
-import { ChatArea } from './components/ChatArea';
-import { Settings } from './components/Settings';
-import { Profile } from './components/Profile';
-import { AdminPanel } from './components/AdminPanel';
-import { Select } from './components/ui/Select';
-import { Modal } from './components/ui/Modal';
-import { Button } from './components/ui/Button';
-import { User, Message, Conversation, AppState, Attachment, View, Theme, AuthCredentials, ModelOption } from './types';
-import { generateChatResponse } from './services/aiService';
-import { authenticate, logoutWithServer, restoreSessionAndFetchUser, updateCurrentUserProfile } from './services/authService';
-import { updateAuthUser } from './services/authStorage';
-import { fetchRemoteModelOptions } from './services/modelService';
-import { fetchUserQuota, UserQuotaSummary } from './services/adminService';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
+import { Auth } from "./components/Auth";
+import { Sidebar } from "./components/Sidebar";
+import { ChatArea } from "./components/ChatArea";
+import { Settings } from "./components/Settings";
+import { Profile } from "./components/Profile";
+import { AdminPanel } from "./components/AdminPanel";
+import { Select } from "./components/ui/Select";
+import { Modal } from "./components/ui/Modal";
+import { Button } from "./components/ui/Button";
 import {
+  User,
+  Message,
+  Conversation,
+  AppState,
+  Attachment,
+  View,
+  Theme,
+  AuthCredentials,
+  ModelOption,
+} from "./types";
+import { generateChatResponse } from "./services/aiService";
+import {
+  authenticate,
+  logoutWithServer,
+  restoreSessionAndFetchUser,
+  updateCurrentUserProfile,
+} from "./services/authService";
+import { updateAuthUser } from "./services/authStorage";
+import { fetchRemoteModelOptions } from "./services/modelService";
+import { fetchUserQuota, UserQuotaSummary } from "./services/adminService";
+import {
+  ConversationMemoryItem,
   ConversationListItem,
   deleteConversation as deleteRemoteConversation,
   fetchConversationList,
   fetchConversationMemories,
   renameConversation as renameRemoteConversation,
-} from './services/conversationService';
-import { Menu, AlertTriangle, Trash2, PanelLeftOpen, Star, Heart } from 'lucide-react';
+} from "./services/conversationService";
+import {
+  Menu,
+  AlertTriangle,
+  Trash2,
+  PanelLeftOpen,
+  Star,
+  Heart,
+} from "lucide-react";
 
 // Star & Blob Background (Unified with Auth)
 const UnifiedBackground = () => {
@@ -32,21 +61,27 @@ const UnifiedBackground = () => {
       top: `${Math.random() * 100}%`,
       size: `${Math.random() * 2 + 1}px`,
       delay: `${Math.random() * 5}s`,
-      opacity: Math.random() * 0.7 + 0.3
+      opacity: Math.random() * 0.7 + 0.3,
     }));
   }, []);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-       {/* Soft Gradient Blobs (Matches Auth) */}
+      {/* Soft Gradient Blobs (Matches Auth) */}
       <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-cheese-200 to-pink-200 dark:from-starlight-500/10 dark:to-purple-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-60 animate-float"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-tr from-cyan-200 to-cheese-100 dark:from-blue-900/10 dark:to-cyan-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-60 animate-float" style={{ animationDelay: '3s' }}></div>
+      <div
+        className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-tr from-cyan-200 to-cheese-100 dark:from-blue-900/10 dark:to-cyan-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-60 animate-float"
+        style={{ animationDelay: "3s" }}
+      ></div>
 
       {/* Floating Cute Elements (Subtle) */}
       <div className="absolute top-[10%] right-[20%] text-cheese-200 dark:text-starlight-500/10 animate-bounce-soft opacity-40">
         <Star size={32} fill="currentColor" className="rotate-12" />
       </div>
-      <div className="absolute bottom-[15%] left-[5%] text-pink-200 dark:text-pink-500/10 animate-bounce-soft opacity-40" style={{ animationDelay: '2s' }}>
+      <div
+        className="absolute bottom-[15%] left-[5%] text-pink-200 dark:text-pink-500/10 animate-bounce-soft opacity-40"
+        style={{ animationDelay: "2s" }}
+      >
         <Heart size={24} fill="currentColor" className="-rotate-12" />
       </div>
 
@@ -62,7 +97,7 @@ const UnifiedBackground = () => {
               width: star.size,
               height: star.size,
               animationDelay: star.delay,
-              opacity: star.opacity
+              opacity: star.opacity,
             }}
           />
         ))}
@@ -71,7 +106,9 @@ const UnifiedBackground = () => {
   );
 };
 
-const toPositiveInteger = (value: string | number | null | undefined): number | null => {
+const toPositiveInteger = (
+  value: string | number | null | undefined,
+): number | null => {
   if (value === null || value === undefined) {
     return null;
   }
@@ -85,20 +122,22 @@ const toPositiveInteger = (value: string | number | null | undefined): number | 
 };
 
 const CONVERSATION_LIST_PAGE_SIZE = 20;
-const CONVERSATION_MEMORY_PAGE_SIZE = 50;
+const CONVERSATION_MEMORY_PAGE_SIZE = 10;
 
-const AI_BUBBLE_COOKIE_KEY = 'mintal_ai_bubble';
+const AI_BUBBLE_COOKIE_KEY = "mintal_ai_bubble";
 const AI_BUBBLE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 const readCookieValue = (name: string): string | null => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return null;
   }
 
-  const cookieParts = window.document.cookie ? window.document.cookie.split('; ') : [];
+  const cookieParts = window.document.cookie
+    ? window.document.cookie.split("; ")
+    : [];
 
   for (const entry of cookieParts) {
-    const separatorIndex = entry.indexOf('=');
+    const separatorIndex = entry.indexOf("=");
     if (separatorIndex < 0) {
       continue;
     }
@@ -113,17 +152,16 @@ const readCookieValue = (name: string): string | null => {
 };
 
 const loadAiBubblePreference = (): boolean => {
-  return readCookieValue(AI_BUBBLE_COOKIE_KEY) === '1';
+  return readCookieValue(AI_BUBBLE_COOKIE_KEY) === "1";
 };
 
 const saveAiBubblePreference = (enabled: boolean): void => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return;
   }
 
-  window.document.cookie = `${AI_BUBBLE_COOKIE_KEY}=${enabled ? '1' : '0'}; path=/; max-age=${AI_BUBBLE_COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
+  window.document.cookie = `${AI_BUBBLE_COOKIE_KEY}=${enabled ? "1" : "0"}; path=/; max-age=${AI_BUBBLE_COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
 };
-
 
 const parseTimeToTimestamp = (value?: string): number => {
   if (!value) {
@@ -138,8 +176,11 @@ const parseTimeToTimestamp = (value?: string): number => {
   return parsed;
 };
 
-const pickConversationTitle = (title: string | undefined, fallback = '新对话'): string => {
-  if (typeof title === 'string' && title.trim()) {
+const pickConversationTitle = (
+  title: string | undefined,
+  fallback = "新对话",
+): string => {
+  if (typeof title === "string" && title.trim()) {
     return title.trim();
   }
 
@@ -150,19 +191,66 @@ const buildRemoteConversationLocalId = (conversationId: number): string => {
   return `remote-${conversationId}`;
 };
 
+interface ConversationMemoryMeta {
+  nextPage: number;
+  hasMore: boolean;
+  total: number;
+  isLoadingInitial: boolean;
+  isLoadingMore: boolean;
+  loadError: string;
+  initialized: boolean;
+}
+
+const createDefaultConversationMemoryMeta = (): ConversationMemoryMeta => ({
+  nextPage: 2,
+  hasMore: false,
+  total: 0,
+  isLoadingInitial: false,
+  isLoadingMore: false,
+  loadError: "",
+  initialized: false,
+});
+
+const mapMemoryItemToMessage = (item: ConversationMemoryItem): Message => ({
+  id: `memory-${item.memoryId}`,
+  role: item.role === "assistant" ? "model" : "user",
+  content: item.content || "",
+  thinking: item.role === "assistant" ? item.thinking : undefined,
+  thinkingDurationMs:
+    item.role === "assistant" ? item.thinkingDurationMs : undefined,
+  timestamp: parseTimeToTimestamp(item.createdAt || item.updatedAt),
+});
+
+const mergeMessagesByIdSorted = (incoming: Message[]): Message[] => {
+  const byId = new Map<string, Message>();
+  incoming.forEach((message) => {
+    byId.set(message.id, message);
+  });
+
+  return Array.from(byId.values()).sort((a, b) => {
+    if (a.timestamp !== b.timestamp) {
+      return a.timestamp - b.timestamp;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+};
+
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.AUTH);
-  const [currentView, setCurrentView] = useState<View>('CHAT');
+  const [currentView, setCurrentView] = useState<View>("CHAT");
   const [user, setUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
-  const [currentModel, setCurrentModel] = useState<string>('');
+  const [currentModel, setCurrentModel] = useState<string>("");
   const [modelOptionsLoading, setModelOptionsLoading] = useState(true);
-  const [modelOptionsError, setModelOptionsError] = useState('');
+  const [modelOptionsError, setModelOptionsError] = useState("");
   const [thinkEnabled, setThinkEnabled] = useState(true);
-  const [theme, setTheme] = useState<Theme>('system');
-  const [aiBubbleEnabled, setAiBubbleEnabled] = useState<boolean>(() => loadAiBubblePreference());
+  const [theme, setTheme] = useState<Theme>("system");
+  const [aiBubbleEnabled, setAiBubbleEnabled] = useState<boolean>(() =>
+    loadAiBubblePreference(),
+  );
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -170,29 +258,41 @@ const App: React.FC = () => {
   const [conversationListPage, setConversationListPage] = useState(1);
   const [conversationListHasMore, setConversationListHasMore] = useState(false);
   const [conversationListLoading, setConversationListLoading] = useState(false);
-  const [conversationListAppending, setConversationListAppending] = useState(false);
-  const [conversationListError, setConversationListError] = useState('');
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [conversationListAppending, setConversationListAppending] =
+    useState(false);
+  const [conversationListError, setConversationListError] = useState("");
+  const [conversationMemoryMeta, setConversationMemoryMeta] = useState<
+    Record<string, ConversationMemoryMeta>
+  >({});
 
   const [loading, setLoading] = useState(false);
-  const [modalOpen, setModalOpen] = useState<'none' | 'confirm_delete'>('none');
+  const [modalOpen, setModalOpen] = useState<"none" | "confirm_delete">("none");
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
   const [quotaInfo, setQuotaInfo] = useState<UserQuotaSummary | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
-  const [quotaError, setQuotaError] = useState('');
+  const [quotaError, setQuotaError] = useState("");
   const sendingGuardRef = useRef(false);
+  const initialMemoryRequestSeqRef = useRef<Record<string, number>>({});
+  const olderMemoryLoadingRef = useRef<Record<string, boolean>>({});
+  const activeConversationMeta = activeConvId
+    ? conversationMemoryMeta[activeConvId]
+    : undefined;
+  const historyLoading = Boolean(activeConversationMeta?.isLoadingInitial);
 
   useEffect(() => {
     const root = document.documentElement;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const applyTheme = () => {
-      if (theme === 'dark') root.classList.add('dark');
-      else if (theme === 'light') root.classList.remove('dark');
-      else mediaQuery.matches ? root.classList.add('dark') : root.classList.remove('dark');
+      if (theme === "dark") root.classList.add("dark");
+      else if (theme === "light") root.classList.remove("dark");
+      else
+        mediaQuery.matches
+          ? root.classList.add("dark")
+          : root.classList.remove("dark");
     };
     applyTheme();
-    mediaQuery.addEventListener('change', applyTheme);
-    return () => mediaQuery.removeEventListener('change', applyTheme);
+    mediaQuery.addEventListener("change", applyTheme);
+    return () => mediaQuery.removeEventListener("change", applyTheme);
   }, [theme]);
 
   useEffect(() => {
@@ -204,10 +304,11 @@ const App: React.FC = () => {
 
     const loadRemoteModels = async () => {
       setModelOptionsLoading(true);
-      setModelOptionsError('');
+      setModelOptionsError("");
 
       try {
-        const { options: remoteModels, defaultModelId } = await fetchRemoteModelOptions();
+        const { options: remoteModels, defaultModelId } =
+          await fetchRemoteModelOptions();
 
         if (cancelled) {
           return;
@@ -215,18 +316,21 @@ const App: React.FC = () => {
 
         if (remoteModels.length === 0) {
           setModelOptions([]);
-          setCurrentModel('');
-          setModelOptionsError('暂无可用模型，请先在后端配置 /models');
+          setCurrentModel("");
+          setModelOptionsError("暂无可用模型，请先在后端配置 /models");
           return;
         }
 
         setModelOptions(remoteModels);
-        setCurrentModel(previousModel => {
-          if (remoteModels.some(model => model.id === previousModel)) {
+        setCurrentModel((previousModel) => {
+          if (remoteModels.some((model) => model.id === previousModel)) {
             return previousModel;
           }
 
-          if (defaultModelId && remoteModels.some(model => model.id === defaultModelId)) {
+          if (
+            defaultModelId &&
+            remoteModels.some((model) => model.id === defaultModelId)
+          ) {
             return defaultModelId;
           }
 
@@ -238,9 +342,9 @@ const App: React.FC = () => {
         }
 
         setModelOptions([]);
-        setCurrentModel('');
-        setModelOptionsError('模型列表加载失败，请稍后重试');
-        console.error('加载远程模型列表失败', error);
+        setCurrentModel("");
+        setModelOptionsError("模型列表加载失败，请稍后重试");
+        console.error("加载远程模型列表失败", error);
       } finally {
         if (!cancelled) {
           setModelOptionsLoading(false);
@@ -260,7 +364,7 @@ const App: React.FC = () => {
       const userId = toPositiveInteger(targetUser?.id);
       if (!userId) {
         setQuotaInfo(null);
-        setQuotaError('当前账号缺少有效 user_id');
+        setQuotaError("当前账号缺少有效 user_id");
         return;
       }
 
@@ -271,9 +375,10 @@ const App: React.FC = () => {
       try {
         const latestQuota = await fetchUserQuota(userId);
         setQuotaInfo(latestQuota);
-        setQuotaError('');
+        setQuotaError("");
       } catch (error) {
-        const message = error instanceof Error ? error.message : '额度状态获取失败';
+        const message =
+          error instanceof Error ? error.message : "额度状态获取失败";
         setQuotaError(message);
       } finally {
         if (!options.silent) {
@@ -304,13 +409,20 @@ const App: React.FC = () => {
     const newId = `local-${Date.now()}`;
     const newConv: Conversation = {
       id: newId,
-      title: '新对话',
+      title: "新对话",
       updatedAt: Date.now(),
-      preview: '开始新的聊天...',
+      preview: "开始新的聊天...",
     };
 
-    setConversations(prev => [newConv, ...prev]);
-    setMessages(prev => ({ ...prev, [newId]: [] }));
+    setConversations((prev) => [newConv, ...prev]);
+    setMessages((prev) => ({ ...prev, [newId]: [] }));
+    setConversationMemoryMeta((prev) => ({
+      ...prev,
+      [newId]: {
+        ...createDefaultConversationMemoryMeta(),
+        initialized: true,
+      },
+    }));
     setActiveConvId(newId);
 
     if (window.innerWidth < 1024) {
@@ -318,49 +430,64 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const mergeRemoteConversations = useCallback((
-    current: Conversation[],
-    remoteItems: ConversationListItem[],
-    append: boolean,
-  ): Conversation[] => {
-    const remoteConversationIds = new Set<number>();
+  const mergeRemoteConversations = useCallback(
+    (
+      current: Conversation[],
+      remoteItems: ConversationListItem[],
+      append: boolean,
+    ): Conversation[] => {
+      const remoteConversationIds = new Set<number>();
 
-    const mappedRemote = remoteItems.map(item => {
-      remoteConversationIds.add(item.conversationId);
-      const matched = current.find(conv => conv.backendConversationId === item.conversationId);
+      const mappedRemote = remoteItems.map((item) => {
+        remoteConversationIds.add(item.conversationId);
+        const matched = current.find(
+          (conv) => conv.backendConversationId === item.conversationId,
+        );
 
-      return {
-        id: matched?.id || buildRemoteConversationLocalId(item.conversationId),
-        title: pickConversationTitle(item.title),
-        updatedAt: parseTimeToTimestamp(item.lastMessageAt || item.updatedAt || item.createdAt),
-        preview: matched?.preview || pickConversationTitle(item.title, '点击查看历史消息'),
-        backendConversationId: item.conversationId,
-      } satisfies Conversation;
-    });
+        return {
+          id:
+            matched?.id || buildRemoteConversationLocalId(item.conversationId),
+          title: pickConversationTitle(item.title),
+          updatedAt: parseTimeToTimestamp(
+            item.lastMessageAt || item.updatedAt || item.createdAt,
+          ),
+          preview:
+            matched?.preview ||
+            pickConversationTitle(item.title, "点击查看历史消息"),
+          backendConversationId: item.conversationId,
+        } satisfies Conversation;
+      });
 
-    if (append) {
-      const merged = [...current];
+      if (append) {
+        const merged = [...current];
 
-      for (const incoming of mappedRemote) {
-        const matchIndex = merged.findIndex(conv => conv.backendConversationId === incoming.backendConversationId);
+        for (const incoming of mappedRemote) {
+          const matchIndex = merged.findIndex(
+            (conv) =>
+              conv.backendConversationId === incoming.backendConversationId,
+          );
 
-        if (matchIndex >= 0) {
-          merged[matchIndex] = { ...merged[matchIndex], ...incoming };
-        } else {
-          merged.push(incoming);
+          if (matchIndex >= 0) {
+            merged[matchIndex] = { ...merged[matchIndex], ...incoming };
+          } else {
+            merged.push(incoming);
+          }
         }
+
+        return merged;
       }
 
-      return merged;
-    }
+      const localDrafts = current.filter((conv) => !conv.backendConversationId);
+      const staleRemote = current.filter(
+        (conv) =>
+          conv.backendConversationId &&
+          !remoteConversationIds.has(conv.backendConversationId),
+      );
 
-    const localDrafts = current.filter(conv => !conv.backendConversationId);
-    const staleRemote = current.filter(
-      conv => conv.backendConversationId && !remoteConversationIds.has(conv.backendConversationId),
-    );
-
-    return [...localDrafts, ...mappedRemote, ...staleRemote];
-  }, []);
+      return [...localDrafts, ...mappedRemote, ...staleRemote];
+    },
+    [],
+  );
 
   const loadConversationListPage = useCallback(
     async (
@@ -371,7 +498,7 @@ const App: React.FC = () => {
 
       if (!userId) {
         setConversationListHasMore(false);
-        setConversationListError('当前账号缺少有效 user_id');
+        setConversationListError("当前账号缺少有效 user_id");
         return null;
       }
 
@@ -394,14 +521,19 @@ const App: React.FC = () => {
           pageSize: CONVERSATION_LIST_PAGE_SIZE,
         });
 
-        setConversationListError('');
+        setConversationListError("");
         setConversationListPage(result.page);
-        setConversationListHasMore(result.page * result.pageSize < result.total);
-        setConversations(prev => mergeRemoteConversations(prev, result.items, append));
+        setConversationListHasMore(
+          result.page * result.pageSize < result.total,
+        );
+        setConversations((prev) =>
+          mergeRemoteConversations(prev, result.items, append),
+        );
 
         return result;
       } catch (error) {
-        const message = error instanceof Error ? error.message : '会话列表加载失败';
+        const message =
+          error instanceof Error ? error.message : "会话列表加载失败";
         setConversationListError(message);
         return null;
       } finally {
@@ -417,19 +549,65 @@ const App: React.FC = () => {
     [mergeRemoteConversations],
   );
 
-  const loadConversationMemoriesById = useCallback(
+  const updateConversationMemoryMeta = useCallback(
+    (
+      conversationId: string,
+      updater: (prev: ConversationMemoryMeta) => ConversationMemoryMeta,
+    ) => {
+      setConversationMemoryMeta((prev) => {
+        const current =
+          prev[conversationId] || createDefaultConversationMemoryMeta();
+        const next = updater(current);
+
+        return {
+          ...prev,
+          [conversationId]: next,
+        };
+      });
+    },
+    [],
+  );
+
+  const loadInitialConversationMemories = useCallback(
     async (conversationId: string, targetUser: User | null) => {
       const userId = toPositiveInteger(targetUser?.id);
       if (!userId) {
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          isLoadingInitial: false,
+          loadError: "当前账号缺少有效 user_id",
+          initialized: true,
+          hasMore: false,
+        }));
         return;
       }
 
-      const targetConversation = conversations.find(conv => conv.id === conversationId);
+      const targetConversation = conversations.find(
+        (conv) => conv.id === conversationId,
+      );
       if (!targetConversation?.backendConversationId) {
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          isLoadingInitial: false,
+          isLoadingMore: false,
+          loadError: "",
+          initialized: true,
+          hasMore: false,
+          total: messages[conversationId]?.length || 0,
+          nextPage: 2,
+        }));
         return;
       }
 
-      setHistoryLoading(true);
+      const requestSeq =
+        (initialMemoryRequestSeqRef.current[conversationId] || 0) + 1;
+      initialMemoryRequestSeqRef.current[conversationId] = requestSeq;
+
+      updateConversationMemoryMeta(conversationId, (prev) => ({
+        ...prev,
+        isLoadingInitial: true,
+        loadError: "",
+      }));
 
       try {
         const result = await fetchConversationMemories({
@@ -439,45 +617,164 @@ const App: React.FC = () => {
           pageSize: CONVERSATION_MEMORY_PAGE_SIZE,
         });
 
-        const remoteMessages: Message[] = result.items.map(item => ({
-          id: `memory-${item.memoryId}`,
-          role: item.role === 'assistant' ? 'model' : 'user',
-          content: item.content || '',
-          thinking: item.role === 'assistant' ? item.thinking : undefined,
-          thinkingDurationMs: item.role === 'assistant' ? item.thinkingDurationMs : undefined,
-          timestamp: parseTimeToTimestamp(item.createdAt || item.updatedAt),
-        }));
+        if (initialMemoryRequestSeqRef.current[conversationId] !== requestSeq) {
+          return;
+        }
 
-        setMessages(prev => ({
+        const remoteMessages = mergeMessagesByIdSorted(
+          result.items.map(mapMemoryItemToMessage),
+        );
+
+        setMessages((prev) => ({
           ...prev,
           [conversationId]: remoteMessages,
         }));
 
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          isLoadingInitial: false,
+          isLoadingMore: false,
+          initialized: true,
+          loadError: "",
+          nextPage: result.page + 1,
+          hasMore: result.page * result.pageSize < result.total,
+          total: result.total,
+        }));
+
         if (remoteMessages.length > 0) {
           const latestMessage = remoteMessages[remoteMessages.length - 1];
-          setConversations(prev => prev.map(item => (
-            item.id === conversationId
-              ? {
-                  ...item,
-                  preview: latestMessage.content.slice(0, 40) || item.preview,
-                  updatedAt: latestMessage.timestamp || item.updatedAt,
-                }
-              : item
-          )));
+          setConversations((prev) =>
+            prev.map((item) =>
+              item.id === conversationId
+                ? {
+                    ...item,
+                    preview: latestMessage.content.slice(0, 40) || item.preview,
+                    updatedAt: latestMessage.timestamp || item.updatedAt,
+                  }
+                : item,
+            ),
+          );
         }
       } catch (error) {
-        console.error('加载会话历史失败', error);
-      } finally {
-        setHistoryLoading(false);
+        if (initialMemoryRequestSeqRef.current[conversationId] !== requestSeq) {
+          return;
+        }
+
+        console.error("加载会话历史失败", error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : "加载会话历史失败，请稍后重试";
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          isLoadingInitial: false,
+          loadError: message,
+          initialized: true,
+        }));
       }
     },
-    [conversations],
+    [conversations, messages, updateConversationMemoryMeta],
   );
 
-  const handleSelectConversation = useCallback((id: string) => {
-    setActiveConvId(id);
-    void loadConversationMemoriesById(id, user);
-  }, [loadConversationMemoriesById, user]);
+  const loadOlderConversationMemories = useCallback(
+    async (conversationId: string, targetUser: User | null) => {
+      const userId = toPositiveInteger(targetUser?.id);
+      if (!userId) {
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          loadError: "当前账号缺少有效 user_id",
+          isLoadingMore: false,
+        }));
+        return;
+      }
+
+      const targetConversation = conversations.find(
+        (conv) => conv.id === conversationId,
+      );
+      if (!targetConversation?.backendConversationId) {
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          hasMore: false,
+          isLoadingMore: false,
+          loadError: "",
+          initialized: true,
+        }));
+        return;
+      }
+
+      const meta =
+        conversationMemoryMeta[conversationId] ||
+        createDefaultConversationMemoryMeta();
+      if (
+        olderMemoryLoadingRef.current[conversationId] ||
+        !meta.initialized ||
+        !meta.hasMore ||
+        meta.isLoadingMore ||
+        meta.isLoadingInitial
+      ) {
+        return;
+      }
+
+      olderMemoryLoadingRef.current[conversationId] = true;
+      updateConversationMemoryMeta(conversationId, (prev) => ({
+        ...prev,
+        isLoadingMore: true,
+        loadError: "",
+      }));
+
+      try {
+        const result = await fetchConversationMemories({
+          userId,
+          conversationId: targetConversation.backendConversationId,
+          page: meta.nextPage,
+          pageSize: CONVERSATION_MEMORY_PAGE_SIZE,
+        });
+
+        const olderMessages = mergeMessagesByIdSorted(
+          result.items.map(mapMemoryItemToMessage),
+        );
+        setMessages((prev) => ({
+          ...prev,
+          [conversationId]: mergeMessagesByIdSorted([
+            ...olderMessages,
+            ...(prev[conversationId] || []),
+          ]),
+        }));
+
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          isLoadingMore: false,
+          loadError: "",
+          initialized: true,
+          nextPage: result.page + 1,
+          hasMore: result.page * result.pageSize < result.total,
+          total: result.total,
+        }));
+      } catch (error) {
+        console.error("加载更早会话历史失败", error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : "加载更早消息失败，请稍后重试";
+        updateConversationMemoryMeta(conversationId, (prev) => ({
+          ...prev,
+          isLoadingMore: false,
+          loadError: message,
+        }));
+      } finally {
+        olderMemoryLoadingRef.current[conversationId] = false;
+      }
+    },
+    [conversationMemoryMeta, conversations, updateConversationMemoryMeta],
+  );
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      setActiveConvId(id);
+      void loadInitialConversationMemories(id, user);
+    },
+    [loadInitialConversationMemories, user],
+  );
 
   const handleLoadMoreConversations = useCallback(() => {
     if (!conversationListHasMore || conversationListAppending) {
@@ -488,17 +785,33 @@ const App: React.FC = () => {
       page: conversationListPage + 1,
       append: true,
     });
-  }, [conversationListAppending, conversationListHasMore, conversationListPage, loadConversationListPage, user]);
+  }, [
+    conversationListAppending,
+    conversationListHasMore,
+    conversationListPage,
+    loadConversationListPage,
+    user,
+  ]);
 
   useEffect(() => {
-    if (appState !== AppState.CHAT || activeConvId || conversations.length === 0) {
+    if (
+      appState !== AppState.CHAT ||
+      activeConvId ||
+      conversations.length === 0
+    ) {
       return;
     }
 
     const firstConversationId = conversations[0].id;
     setActiveConvId(firstConversationId);
-    void loadConversationMemoriesById(firstConversationId, user);
-  }, [activeConvId, appState, conversations, loadConversationMemoriesById, user]);
+    void loadInitialConversationMemories(firstConversationId, user);
+  }, [
+    activeConvId,
+    appState,
+    conversations,
+    loadInitialConversationMemories,
+    user,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -510,15 +823,20 @@ const App: React.FC = () => {
         if (!cancelled && session) {
           setUser(session.user);
           setAppState(AppState.CHAT);
-          setCurrentView('CHAT');
+          setCurrentView("CHAT");
           setConversations([]);
           setMessages({});
+          setConversationMemoryMeta({});
+          initialMemoryRequestSeqRef.current = {};
+          olderMemoryLoadingRef.current = {};
           setActiveConvId(null);
           setConversationListPage(1);
           setConversationListHasMore(false);
-          setConversationListError('');
+          setConversationListError("");
 
-          const list = await loadConversationListPage(session.user, { page: 1 });
+          const list = await loadConversationListPage(session.user, {
+            page: 1,
+          });
 
           if (!cancelled && (!list || list.items.length === 0)) {
             startNewChat();
@@ -543,12 +861,12 @@ const App: React.FC = () => {
   }, [loadConversationListPage, startNewChat, syncUserQuota]);
 
   const handleDeleteConversation = async (id: string) => {
-    const targetConversation = conversations.find(item => item.id === id);
+    const targetConversation = conversations.find((item) => item.id === id);
     const userId = toPositiveInteger(user?.id);
 
     if (targetConversation?.backendConversationId) {
       if (!userId) {
-        setConversationListError('当前账号缺少有效 user_id，无法删除会话');
+        setConversationListError("当前账号缺少有效 user_id，无法删除会话");
         return;
       }
 
@@ -557,19 +875,27 @@ const App: React.FC = () => {
           userId,
           conversationId: targetConversation.backendConversationId,
         });
-        setConversationListError('');
+        setConversationListError("");
       } catch (error) {
-        const message = error instanceof Error ? error.message : '删除会话失败，请稍后重试';
+        const message =
+          error instanceof Error ? error.message : "删除会话失败，请稍后重试";
         setConversationListError(message);
         return;
       }
     }
 
-    setConversations(prev => prev.filter(c => c.id !== id));
-    setMessages(prev => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    setMessages((prev) => {
       const newMsgs = { ...prev };
       delete newMsgs[id];
       return newMsgs;
+    });
+    setConversationMemoryMeta((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      delete initialMemoryRequestSeqRef.current[id];
+      delete olderMemoryLoadingRef.current[id];
+      return next;
     });
 
     if (activeConvId === id) {
@@ -585,12 +911,12 @@ const App: React.FC = () => {
       return;
     }
 
-    const targetConversation = conversations.find(item => item.id === id);
+    const targetConversation = conversations.find((item) => item.id === id);
     const userId = toPositiveInteger(user?.id);
 
     if (targetConversation?.backendConversationId) {
       if (!userId) {
-        setConversationListError('当前账号缺少有效 user_id，无法重命名会话');
+        setConversationListError("当前账号缺少有效 user_id，无法重命名会话");
         return;
       }
 
@@ -601,25 +927,30 @@ const App: React.FC = () => {
           title: normalizedTitle,
         });
 
-        setConversations(prev => prev.map(item => (
-          item.id === id
-            ? {
-                ...item,
-                title: renamed.title,
-                updatedAt: parseTimeToTimestamp(renamed.updatedAt),
-              }
-            : item
-        )));
-        setConversationListError('');
+        setConversations((prev) =>
+          prev.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  title: renamed.title,
+                  updatedAt: parseTimeToTimestamp(renamed.updatedAt),
+                }
+              : item,
+          ),
+        );
+        setConversationListError("");
       } catch (error) {
-        const message = error instanceof Error ? error.message : '重命名会话失败，请稍后重试';
+        const message =
+          error instanceof Error ? error.message : "重命名会话失败，请稍后重试";
         setConversationListError(message);
       }
 
       return;
     }
 
-    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: normalizedTitle } : c));
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title: normalizedTitle } : c)),
+    );
   };
 
   const handleLogin = async (credentials: AuthCredentials) => {
@@ -627,13 +958,16 @@ const App: React.FC = () => {
 
     setUser(session.user);
     setAppState(AppState.CHAT);
-    setCurrentView('CHAT');
+    setCurrentView("CHAT");
     setConversations([]);
     setMessages({});
+    setConversationMemoryMeta({});
+    initialMemoryRequestSeqRef.current = {};
+    olderMemoryLoadingRef.current = {};
     setActiveConvId(null);
     setConversationListPage(1);
     setConversationListHasMore(false);
-    setConversationListError('');
+    setConversationListError("");
 
     const list = await loadConversationListPage(session.user, { page: 1 });
     if (!list || list.items.length === 0) {
@@ -647,23 +981,25 @@ const App: React.FC = () => {
     try {
       await logoutWithServer();
     } catch (error) {
-      console.error('退出登录接口调用失败，将仅清理前端登录态', error);
+      console.error("退出登录接口调用失败，将仅清理前端登录态", error);
     } finally {
       setUser(null);
       setAppState(AppState.AUTH);
-      setCurrentView('CHAT');
+      setCurrentView("CHAT");
       setConversations([]);
       setMessages({});
+      setConversationMemoryMeta({});
+      initialMemoryRequestSeqRef.current = {};
+      olderMemoryLoadingRef.current = {};
       setActiveConvId(null);
       setConversationListPage(1);
       setConversationListHasMore(false);
       setConversationListLoading(false);
       setConversationListAppending(false);
-      setConversationListError('');
-      setHistoryLoading(false);
+      setConversationListError("");
       setIsSidebarOpen(false);
       setQuotaInfo(null);
-      setQuotaError('');
+      setQuotaError("");
       setQuotaLoading(false);
     }
   };
@@ -690,15 +1026,15 @@ const App: React.FC = () => {
     const assistantMessageId = `${Date.now()}-assistant`;
     const createdAt = Date.now();
 
-    setMessages(prev => ({
+    setMessages((prev) => ({
       ...prev,
       [chatId]: [
         ...(prev[chatId] || []),
         {
           id: assistantMessageId,
-          role: 'model',
-          content: '',
-          thinking: '',
+          role: "model",
+          content: "",
+          thinking: "",
           thinkingDurationMs: 0,
           timestamp: createdAt,
           isStreaming: true,
@@ -707,11 +1043,11 @@ const App: React.FC = () => {
     }));
 
     const updateAssistantMessage = (updater: (message: Message) => Message) => {
-      setMessages(prev => ({
+      setMessages((prev) => ({
         ...prev,
-        [chatId]: (prev[chatId] || []).map(item => (
-          item.id === assistantMessageId ? updater(item) : item
-        )),
+        [chatId]: (prev[chatId] || []).map((item) =>
+          item.id === assistantMessageId ? updater(item) : item,
+        ),
       }));
     };
 
@@ -720,15 +1056,17 @@ const App: React.FC = () => {
         return;
       }
 
-      setConversations(prev => prev.map(item => (
-        item.id === chatId && item.backendConversationId !== conversationId
-          ? { ...item, backendConversationId: conversationId }
-          : item
-      )));
+      setConversations((prev) =>
+        prev.map((item) =>
+          item.id === chatId && item.backendConversationId !== conversationId
+            ? { ...item, backendConversationId: conversationId }
+            : item,
+        ),
+      );
     };
 
     const durationTicker = window.setInterval(() => {
-      updateAssistantMessage(item => {
+      updateAssistantMessage((item) => {
         if (!item.isStreaming) {
           return item;
         }
@@ -741,33 +1079,42 @@ const App: React.FC = () => {
     }, 200);
 
     try {
-      const response = await generateChatResponse(currentModel, history, userMessage, attachments, user, {
-        conversationId: backendConversationId,
-        thinkEnabled,
-        onConversationId: (conversationId) => {
-          syncBackendConversationId(conversationId);
+      const response = await generateChatResponse(
+        currentModel,
+        history,
+        userMessage,
+        attachments,
+        user,
+        {
+          conversationId: backendConversationId,
+          thinkEnabled,
+          onConversationId: (conversationId) => {
+            syncBackendConversationId(conversationId);
+          },
+          onDelta: ({ content, thinking, durationMs, conversationId }) => {
+            const elapsedMs = Date.now() - createdAt;
+            syncBackendConversationId(conversationId);
+
+            updateAssistantMessage((item) => ({
+              ...item,
+              content,
+              thinking,
+              thinkingDurationMs:
+                durationMs && durationMs > 0 ? durationMs : elapsedMs,
+              timestamp: Date.now(),
+              isStreaming: true,
+              isError: false,
+            }));
+          },
         },
-        onDelta: ({ content, thinking, durationMs, conversationId }) => {
-          const elapsedMs = Date.now() - createdAt;
-          syncBackendConversationId(conversationId);
+      );
 
-          updateAssistantMessage(item => ({
-            ...item,
-            content,
-            thinking,
-            thinkingDurationMs: durationMs && durationMs > 0 ? durationMs : elapsedMs,
-            timestamp: Date.now(),
-            isStreaming: true,
-            isError: false,
-          }));
-        },
-      });
+      const finalDurationMs =
+        response.durationMs && response.durationMs > 0
+          ? response.durationMs
+          : Date.now() - createdAt;
 
-      const finalDurationMs = response.durationMs && response.durationMs > 0
-        ? response.durationMs
-        : Date.now() - createdAt;
-
-      updateAssistantMessage(item => ({
+      updateAssistantMessage((item) => ({
         ...item,
         content: response.content,
         thinking: response.thinking,
@@ -782,40 +1129,51 @@ const App: React.FC = () => {
         const currentUserId = toPositiveInteger(user?.id);
 
         if (currentUserId) {
-          setQuotaInfo(prev => {
-            const base = prev && prev.userId === currentUserId
-              ? prev
-              : {
-                  userId: currentUserId,
-                  quotaLimit: 0,
-                  quotaUsed: 0,
-                  quotaRemaining: 0,
-                  updatedAt: Date.now(),
-                };
+          setQuotaInfo((prev) => {
+            const base =
+              prev && prev.userId === currentUserId
+                ? prev
+                : {
+                    userId: currentUserId,
+                    quotaLimit: 0,
+                    quotaUsed: 0,
+                    quotaRemaining: 0,
+                    updatedAt: Date.now(),
+                  };
 
             return {
               ...base,
-              quotaLimit: typeof response.quota.limit === 'number' ? response.quota.limit : base.quotaLimit,
-              quotaUsed: typeof response.quota.used === 'number' ? response.quota.used : base.quotaUsed,
-              quotaRemaining: typeof response.quota.remaining === 'number' ? response.quota.remaining : base.quotaRemaining,
+              quotaLimit:
+                typeof response.quota.limit === "number"
+                  ? response.quota.limit
+                  : base.quotaLimit,
+              quotaUsed:
+                typeof response.quota.used === "number"
+                  ? response.quota.used
+                  : base.quotaUsed,
+              quotaRemaining:
+                typeof response.quota.remaining === "number"
+                  ? response.quota.remaining
+                  : base.quotaRemaining,
               quotaResetAt: response.quota.resetAt || base.quotaResetAt,
               updatedAt: Date.now(),
             };
           });
-          setQuotaError('');
+          setQuotaError("");
         }
       }
 
       void loadConversationListPage(user, { page: 1, silent: true });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error && error.message
-        ? error.message
-        : '哎呀，出了一点小问题，稍后再试一下吧。';
+      const errorMessage =
+        error instanceof Error && error.message
+          ? error.message
+          : "哎呀，出了一点小问题，稍后再试一下吧。";
 
-      updateAssistantMessage(item => ({
+      updateAssistantMessage((item) => ({
         ...item,
         content: errorMessage,
-        thinking: '',
+        thinking: "",
         thinkingDurationMs: Date.now() - createdAt,
         timestamp: Date.now(),
         isStreaming: false,
@@ -838,39 +1196,48 @@ const App: React.FC = () => {
       chatId = `local-${Date.now()}`;
       const newConv: Conversation = {
         id: chatId,
-        title: '新对话',
+        title: "新对话",
         updatedAt: Date.now(),
-        preview: '开始新的聊天...',
+        preview: "开始新的聊天...",
       };
 
-      setConversations(prev => [newConv, ...prev]);
-      setMessages(prev => ({ ...prev, [chatId!]: [] }));
+      setConversations((prev) => [newConv, ...prev]);
+      setMessages((prev) => ({ ...prev, [chatId!]: [] }));
+      setConversationMemoryMeta((prev) => ({
+        ...prev,
+        [chatId!]: {
+          ...createDefaultConversationMemoryMeta(),
+          initialized: true,
+        },
+      }));
       setActiveConvId(chatId);
     }
 
-    const historyBeforeSend = attachments.length > 0 ? [] : (messages[chatId] || []);
+    const historyBeforeSend =
+      attachments.length > 0 ? [] : messages[chatId] || [];
     const userMsg: Message = {
       id: `${Date.now()}-user`,
-      role: 'user',
+      role: "user",
       content: text,
       timestamp: Date.now(),
       attachments,
     };
 
-    setMessages(prev => ({
+    setMessages((prev) => ({
       ...prev,
       [chatId!]: [...(prev[chatId!] || []), userMsg],
     }));
 
-    setConversations(prev => {
-      const target = prev.find(item => item.id === chatId);
+    setConversations((prev) => {
+      const target = prev.find((item) => item.id === chatId);
       if (!target) {
         return prev;
       }
 
-      const nextTitle = target.title === '新对话'
-        ? pickConversationTitle(text.slice(0, 20), '新对话')
-        : target.title;
+      const nextTitle =
+        target.title === "新对话"
+          ? pickConversationTitle(text.slice(0, 20), "新对话")
+          : target.title;
 
       const updatedConversation: Conversation = {
         ...target,
@@ -881,11 +1248,13 @@ const App: React.FC = () => {
 
       return [
         updatedConversation,
-        ...prev.filter(item => item.id !== chatId),
+        ...prev.filter((item) => item.id !== chatId),
       ];
     });
 
-    const currentConversation = conversations.find(item => item.id === chatId);
+    const currentConversation = conversations.find(
+      (item) => item.id === chatId,
+    );
 
     sendingGuardRef.current = true;
     try {
@@ -911,31 +1280,39 @@ const App: React.FC = () => {
       return;
     }
 
-    const msgIndex = currentMsgs.findIndex(m => m.id === messageId);
+    const msgIndex = currentMsgs.findIndex((m) => m.id === messageId);
     if (msgIndex === -1) {
       return;
     }
 
     const oldMsg = currentMsgs[msgIndex];
-    const updatedMsg: Message = { ...oldMsg, content: newContent, timestamp: Date.now() };
+    const updatedMsg: Message = {
+      ...oldMsg,
+      content: newContent,
+      timestamp: Date.now(),
+    };
     const historyBefore = currentMsgs.slice(0, msgIndex);
 
-    setMessages(prev => ({
+    setMessages((prev) => ({
       ...prev,
       [activeConvId]: [...historyBefore, updatedMsg],
     }));
 
-    setConversations(prev => prev.map(item => (
-      item.id === activeConvId
-        ? {
-            ...item,
-            preview: newContent.slice(0, 40),
-            updatedAt: Date.now(),
-          }
-        : item
-    )));
+    setConversations((prev) =>
+      prev.map((item) =>
+        item.id === activeConvId
+          ? {
+              ...item,
+              preview: newContent.slice(0, 40),
+              updatedAt: Date.now(),
+            }
+          : item,
+      ),
+    );
 
-    const currentConversation = conversations.find(item => item.id === activeConvId);
+    const currentConversation = conversations.find(
+      (item) => item.id === activeConvId,
+    );
 
     sendingGuardRef.current = true;
     try {
@@ -950,7 +1327,6 @@ const App: React.FC = () => {
       sendingGuardRef.current = false;
     }
   };
-
 
   if (authBootstrapping) {
     return (
@@ -990,14 +1366,12 @@ const App: React.FC = () => {
       />
 
       <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 p-4 gap-4 h-full">
-        {currentView === 'CHAT' && (
+        {currentView === "CHAT" && (
           // Main Chat Container
           <div className="flex-1 flex flex-col h-full bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden relative animate-pop-in origin-center group transition-all duration-500">
-
             {/* Header with Frosted Glass Buttons */}
             <header className="h-[74px] sm:h-20 flex items-center gap-2.5 sm:gap-4 px-3 sm:px-6 z-20 shrink-0">
               <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
-
                 {/* Mobile Menu Button - Frosted Glass */}
                 <button
                   onClick={() => setIsSidebarOpen(true)}
@@ -1017,15 +1391,23 @@ const App: React.FC = () => {
                 )}
 
                 <div className="min-w-0 flex-1 sm:flex-none sm:w-56">
-                  <Select options={modelOptions} value={currentModel} onChange={setCurrentModel} placeholder="选择模型" isLoading={modelOptionsLoading} emptyText={modelOptionsError || '暂无可用模型'} disabled={modelOptionsLoading || modelOptions.length === 0} />
+                  <Select
+                    options={modelOptions}
+                    value={currentModel}
+                    onChange={setCurrentModel}
+                    placeholder="选择模型"
+                    isLoading={modelOptionsLoading}
+                    emptyText={modelOptionsError || "暂无可用模型"}
+                    disabled={modelOptionsLoading || modelOptions.length === 0}
+                  />
                 </div>
               </div>
 
               {/* Trash Button - Frosted Glass */}
               <button
-                 onClick={() => setModalOpen('confirm_delete')}
-                 disabled={!activeConvId || !messages[activeConvId]?.length}
-                 className="shrink-0 p-2.5 sm:p-3 ml-1 sm:ml-0 text-warm-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:bg-red-50 dark:hover:bg-red-900/20"
+                onClick={() => setModalOpen("confirm_delete")}
+                disabled={!activeConvId || !messages[activeConvId]?.length}
+                className="shrink-0 p-2.5 sm:p-3 ml-1 sm:ml-0 text-warm-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:bg-red-50 dark:hover:bg-red-900/20"
               >
                 <Trash2 size={20} strokeWidth={2.5} />
               </button>
@@ -1033,8 +1415,32 @@ const App: React.FC = () => {
 
             <div className="flex-1 overflow-hidden relative">
               <ChatArea
+                conversationId={activeConvId}
                 messages={activeConvId ? messages[activeConvId] || [] : []}
                 isLoading={loading || historyLoading}
+                hasMoreHistory={Boolean(activeConversationMeta?.hasMore)}
+                isLoadingMoreHistory={Boolean(
+                  activeConversationMeta?.isLoadingMore,
+                )}
+                historyLoadError={activeConversationMeta?.loadError}
+                onLoadOlderMessages={
+                  activeConvId
+                    ? async () => {
+                        const activeMessages = messages[activeConvId] || [];
+                        const meta = conversationMemoryMeta[activeConvId];
+
+                        if (meta?.loadError && activeMessages.length === 0) {
+                          await loadInitialConversationMemories(
+                            activeConvId,
+                            user,
+                          );
+                          return;
+                        }
+
+                        await loadOlderConversationMemories(activeConvId, user);
+                      }
+                    : undefined
+                }
                 onSendMessage={handleSendMessage}
                 onEditMessage={handleEditMessage}
                 user={user}
@@ -1046,40 +1452,90 @@ const App: React.FC = () => {
                 thinkEnabled={thinkEnabled}
                 onThinkEnabledChange={setThinkEnabled}
                 inputDisabled={modelOptionsLoading || !currentModel}
-                inputDisabledHint={modelOptionsLoading ? '模型加载中，请稍候…' : modelOptionsError || '暂无可用模型，请先配置模型'}
+                inputDisabledHint={
+                  modelOptionsLoading
+                    ? "模型加载中，请稍候…"
+                    : modelOptionsError || "暂无可用模型"
+                }
               />
             </div>
           </div>
         )}
 
-        {currentView === 'SETTINGS' && (
-           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><Settings onBack={() => setCurrentView('CHAT')} onNavigateToUsageManagement={() => setCurrentView('ADMIN')} theme={theme} setTheme={setTheme} aiBubbleEnabled={aiBubbleEnabled} setAiBubbleEnabled={setAiBubbleEnabled} /></div>
+        {currentView === "SETTINGS" && (
+          <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in">
+            <Settings
+              onBack={() => setCurrentView("CHAT")}
+              onNavigateToUsageManagement={() => setCurrentView("ADMIN")}
+              theme={theme}
+              setTheme={setTheme}
+              aiBubbleEnabled={aiBubbleEnabled}
+              setAiBubbleEnabled={setAiBubbleEnabled}
+            />
+          </div>
         )}
 
-        {currentView === 'PROFILE' && user && (
-           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><Profile user={user} onUpdateUser={handleUpdateUser} onBack={() => setCurrentView('CHAT')} /></div>
+        {currentView === "PROFILE" && user && (
+          <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in">
+            <Profile
+              user={user}
+              onUpdateUser={handleUpdateUser}
+              onBack={() => setCurrentView("CHAT")}
+            />
+          </div>
         )}
 
-        {currentView === 'ADMIN' && (
-           <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in"><AdminPanel onBack={() => setCurrentView('CHAT')} defaultUserId={user?.id} onQuotaUpdated={(latestQuota) => {
-             const currentUserId = toPositiveInteger(user?.id);
-             if (currentUserId && latestQuota.userId === currentUserId) {
-               setQuotaInfo(latestQuota);
-               setQuotaError('');
-             }
-           }} /></div>
+        {currentView === "ADMIN" && (
+          <div className="flex-1 bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-soft dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden animate-pop-in">
+            <AdminPanel
+              onBack={() => setCurrentView("CHAT")}
+              defaultUserId={user?.id}
+              onQuotaUpdated={(latestQuota) => {
+                const currentUserId = toPositiveInteger(user?.id);
+                if (currentUserId && latestQuota.userId === currentUserId) {
+                  setQuotaInfo(latestQuota);
+                  setQuotaError("");
+                }
+              }}
+            />
+          </div>
         )}
       </main>
 
-      <Modal isOpen={modalOpen === 'confirm_delete'} onClose={() => setModalOpen('none')} title="清空记忆？" footer={
-        <>
-          <Button variant="ghost" onClick={() => setModalOpen('none')}>点错了</Button>
-          <Button variant="danger" onClick={() => { if(activeConvId) setMessages(prev => ({...prev, [activeConvId]: []})); setModalOpen('none'); }}>确认清空</Button>
-        </>
-      }>
+      <Modal
+        isOpen={modalOpen === "confirm_delete"}
+        onClose={() => setModalOpen("none")}
+        title="清空记忆？"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setModalOpen("none")}>
+              点错了
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (activeConvId)
+                  setMessages((prev) => ({ ...prev, [activeConvId]: [] }));
+                setModalOpen("none");
+              }}
+            >
+              确认清空
+            </Button>
+          </>
+        }
+      >
         <div className="flex items-center gap-4">
-          <div className="p-4 bg-red-100 text-red-500 rounded-[20px]"><AlertTriangle size={28} /></div>
-          <div><h4 className="font-bold text-warm-800 dark:text-white text-lg">真的要忘掉这些吗？</h4><p className="text-warm-500 dark:text-slate-400">删除后就找不回这段对话了哦。</p></div>
+          <div className="p-4 bg-red-100 text-red-500 rounded-[20px]">
+            <AlertTriangle size={28} />
+          </div>
+          <div>
+            <h4 className="font-bold text-warm-800 dark:text-white text-lg">
+              真的要忘掉这些吗？
+            </h4>
+            <p className="text-warm-500 dark:text-slate-400">
+              删除后就找不回这段对话了哦。
+            </p>
+          </div>
         </div>
       </Modal>
     </div>

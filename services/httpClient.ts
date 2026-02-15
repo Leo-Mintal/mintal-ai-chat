@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
 import {
   clearAuthSession,
   getAccessToken,
@@ -5,7 +9,11 @@ import {
   updateAuthTokens,
 } from './authStorage';
 
+<<<<<<< HEAD
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:18080/api/v1').replace(/\/$/, '');
+=======
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://127.0.0.1:18080/api/v1').replace(/\/$/, '');
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
 
 interface ApiEnvelope<T> {
   code: number;
@@ -103,7 +111,11 @@ const toHttpClientError = (payload: unknown, status: number): HttpClientError =>
 
 const unwrapSuccessData = <T>(payload: unknown, status: number): T => {
   if (isRecord(payload) && typeof payload.code === 'number') {
+<<<<<<< HEAD
     const envelope = payload as ApiEnvelope<T>;
+=======
+    const envelope = payload as unknown as ApiEnvelope<T>;
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
     const isBusinessSuccess = envelope.code >= 200 && envelope.code < 300;
 
     if (!isBusinessSuccess) {

@@ -28,7 +28,11 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             <X className="w-5 h-5" />
           </button>
         </div>
+<<<<<<< HEAD
         <div className="p-6 text-slate-700 dark:text-slate-300">
+=======
+        <div className="p-6 text-slate-700 dark:text-slate-200">
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
           {children}
         </div>
         {footer && (

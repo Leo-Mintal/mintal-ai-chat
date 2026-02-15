@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -17,7 +21,11 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
+<<<<<<< HEAD
           '@': path.resolve(__dirname, '.'),
+=======
+          '@': path.resolve('.'),
+>>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
         }
       }
     };
