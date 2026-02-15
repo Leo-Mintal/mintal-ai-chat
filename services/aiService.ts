@@ -1,8 +1,8 @@
-import { Attachment, Message, User } from '../types';
-import { HttpClientError } from './httpClient';
+import { Attachment, Message, User } from "../types";
+import { HttpClientError } from "./httpClient";
 
 interface LlmChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: "system" | "user" | "assistant";
   content: string;
 }
 
@@ -44,21 +44,15 @@ export interface GenerateChatResponseResult {
   conversationId?: number;
 }
 
-<<<<<<< HEAD
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:18080/api/v1').replace(/\/$/, '');
-=======
-const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://127.0.0.1:18080/api/v1').replace(/\/$/, '');
->>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
+const API_BASE_URL = (
+  import.meta.env?.VITE_API_BASE_URL || "http://127.0.0.1:18080/api/v1"
+).replace(/\/$/, "");
 
 const BACKEND_CHAT_TIMEOUT_MS = 300_000;
 const DEFAULT_FRONTEND_CHAT_TIMEOUT_MS = 600_000;
 
 const resolveFrontendChatTimeoutMs = (): number => {
-<<<<<<< HEAD
-  const raw = import.meta.env.VITE_LLM_CHAT_TIMEOUT_MS;
-=======
   const raw = import.meta.env?.VITE_LLM_CHAT_TIMEOUT_MS;
->>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
   const parsed = Number(raw);
 
   if (Number.isFinite(parsed) && parsed > BACKEND_CHAT_TIMEOUT_MS) {
@@ -71,7 +65,7 @@ const resolveFrontendChatTimeoutMs = (): number => {
 const FRONTEND_CHAT_TIMEOUT_MS = resolveFrontendChatTimeoutMs();
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 };
 
 const pickText = (
@@ -84,7 +78,7 @@ const pickText = (
   for (const key of keys) {
     const value = source[key];
 
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       if (shouldTrim) {
         const trimmed = value.trim();
         if (trimmed) {
@@ -95,7 +89,7 @@ const pickText = (
       }
     }
 
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       return String(value);
     }
   }
@@ -104,11 +98,11 @@ const pickText = (
 };
 
 const normalizeConversationId = (value: unknown): number | undefined => {
-  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
     return value;
   }
 
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof value === "string" && value.trim()) {
     const parsed = Number(value.trim());
     if (Number.isInteger(parsed) && parsed > 0) {
       return parsed;
@@ -122,17 +116,19 @@ const extractConversationId = (
   source: Record<string, unknown>,
   current?: number,
 ): number | undefined => {
-  return normalizeConversationId(source.conversation_id)
-    || normalizeConversationId(source.conversationId)
-    || current;
+  return (
+    normalizeConversationId(source.conversation_id) ||
+    normalizeConversationId(source.conversationId) ||
+    current
+  );
 };
 
 const buildUrl = (path: string): string => {
-  if (path.startsWith('http://') || path.startsWith('https://')) {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
 
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
 };
 
@@ -144,18 +140,18 @@ const tryParseJson = (raw: string): unknown => {
   }
 };
 
-const toAssistantRole = (role: Message['role']): LlmChatMessage['role'] => {
-  return role === 'model' ? 'assistant' : 'user';
+const toAssistantRole = (role: Message["role"]): LlmChatMessage["role"] => {
+  return role === "model" ? "assistant" : "user";
 };
 
 const resolveNumericUserId = (user: User | null): number => {
   if (!user?.id) {
-    throw new Error('当前登录信息缺少 user_id，请重新登录后重试');
+    throw new Error("当前登录信息缺少 user_id，请重新登录后重试");
   }
 
   const userId = Number(user.id);
   if (!Number.isInteger(userId) || userId <= 0) {
-    throw new Error('当前账号 user_id 无效，请重新登录后再试');
+    throw new Error("当前账号 user_id 无效，请重新登录后再试");
   }
 
   return userId;
@@ -167,23 +163,24 @@ const buildChatMessages = (
   attachments: Attachment[],
 ): LlmChatMessage[] => {
   const safeHistory = history
-    .filter(item => !item.isError)
-    .map(item => ({
+    .filter((item) => !item.isError)
+    .map((item) => ({
       role: toAssistantRole(item.role),
       content: item.content.trim(),
     }))
-    .filter(item => item.content.length > 0);
+    .filter((item) => item.content.length > 0);
 
-  const attachmentHint = attachments.length > 0
-    ? `\n\n[附件：${attachments.map(item => item.name).join('、')}]`
-    : '';
+  const attachmentHint =
+    attachments.length > 0
+      ? `\n\n[附件：${attachments.map((item) => item.name).join("、")}]`
+      : "";
 
   const finalUserMessage = `${currentMessage}${attachmentHint}`.trim();
 
   return [
     ...safeHistory,
     {
-      role: 'user',
+      role: "user",
       content: finalUserMessage,
     },
   ];
@@ -205,22 +202,28 @@ const mergeChunk = (current: string, chunk: string): string => {
   return `${current}${chunk}`;
 };
 
-const extractQuotaInfo = (source: Record<string, unknown>, current: QuotaInfo): QuotaInfo => {
+const extractQuotaInfo = (
+  source: Record<string, unknown>,
+  current: QuotaInfo,
+): QuotaInfo => {
   const next: QuotaInfo = { ...current };
 
-  if (typeof source.quota_limit === 'number') {
+  if (typeof source.quota_limit === "number") {
     next.limit = source.quota_limit;
   }
 
-  if (typeof source.quota_used === 'number') {
+  if (typeof source.quota_used === "number") {
     next.used = source.quota_used;
   }
 
-  if (typeof source.quota_remaining === 'number') {
+  if (typeof source.quota_remaining === "number") {
     next.remaining = source.quota_remaining;
   }
 
-  if (typeof source.quota_reset_at === 'string' && source.quota_reset_at.trim()) {
+  if (
+    typeof source.quota_reset_at === "string" &&
+    source.quota_reset_at.trim()
+  ) {
     next.resetAt = source.quota_reset_at.trim();
   }
 
@@ -243,7 +246,9 @@ const extractDurationMs = (
   source: Record<string, unknown>,
   current?: number,
 ): number | undefined => {
-  const resolveDurationFromRecord = (record: Record<string, unknown>): number | undefined => {
+  const resolveDurationFromRecord = (
+    record: Record<string, unknown>,
+  ): number | undefined => {
     const directCandidates = [
       record.thinking_duration_ms,
       record.thinkingDurationMs,
@@ -252,11 +257,11 @@ const extractDurationMs = (
     ];
 
     for (const candidate of directCandidates) {
-      if (typeof candidate === 'number' && candidate > 0) {
+      if (typeof candidate === "number" && candidate > 0) {
         return Math.max(1, Math.round(candidate));
       }
 
-      if (typeof candidate === 'string' && candidate.trim()) {
+      if (typeof candidate === "string" && candidate.trim()) {
         const parsed = Number(candidate.trim());
         if (Number.isFinite(parsed) && parsed > 0) {
           return Math.max(1, Math.round(parsed));
@@ -264,9 +269,14 @@ const extractDurationMs = (
       }
     }
 
-    const upstreamCandidates = [record.total_duration, record.eval_duration, record.prompt_eval_duration, record.load_duration];
+    const upstreamCandidates = [
+      record.total_duration,
+      record.eval_duration,
+      record.prompt_eval_duration,
+      record.load_duration,
+    ];
     for (const candidate of upstreamCandidates) {
-      if (typeof candidate === 'number' && candidate > 0) {
+      if (typeof candidate === "number" && candidate > 0) {
         return normalizeDurationMs(candidate);
       }
     }
@@ -289,29 +299,79 @@ const extractDurationMs = (
   return current;
 };
 
-const extractDeltaFromSource = (source: Record<string, unknown>): { contentChunk: string; thinkingChunk: string; done: boolean } => {
-  let contentChunk = '';
-  let thinkingChunk = '';
+const extractDeltaFromSource = (
+  source: Record<string, unknown>,
+): { contentChunk: string; thinkingChunk: string; done: boolean } => {
+  let contentChunk = "";
+  let thinkingChunk = "";
 
   if (isRecord(source.message)) {
-    contentChunk = pickText(source.message, ['content', 'response', 'text', 'output', 'answer', 'result'], { trim: false }) || '';
-    thinkingChunk = pickText(source.message, ['thinking', 'reasoning', 'reasoning_content', 'reasoningContent', 'think'], { trim: false }) || '';
+    contentChunk =
+      pickText(
+        source.message,
+        ["content", "response", "text", "output", "answer", "result"],
+        { trim: false },
+      ) || "";
+    thinkingChunk =
+      pickText(
+        source.message,
+        [
+          "thinking",
+          "reasoning",
+          "reasoning_content",
+          "reasoningContent",
+          "think",
+        ],
+        { trim: false },
+      ) || "";
   }
 
   if (!contentChunk && isRecord(source.delta)) {
-    contentChunk = pickText(source.delta, ['content', 'response', 'text', 'output', 'answer', 'result'], { trim: false }) || '';
+    contentChunk =
+      pickText(
+        source.delta,
+        ["content", "response", "text", "output", "answer", "result"],
+        { trim: false },
+      ) || "";
   }
 
   if (!thinkingChunk && isRecord(source.delta)) {
-    thinkingChunk = pickText(source.delta, ['thinking', 'reasoning', 'reasoning_content', 'reasoningContent', 'think'], { trim: false }) || '';
+    thinkingChunk =
+      pickText(
+        source.delta,
+        [
+          "thinking",
+          "reasoning",
+          "reasoning_content",
+          "reasoningContent",
+          "think",
+        ],
+        { trim: false },
+      ) || "";
   }
 
   if (!contentChunk) {
-    contentChunk = pickText(source, ['response', 'content', 'text', 'output', 'answer', 'result'], { trim: false }) || '';
+    contentChunk =
+      pickText(
+        source,
+        ["response", "content", "text", "output", "answer", "result"],
+        { trim: false },
+      ) || "";
   }
 
   if (!thinkingChunk) {
-    thinkingChunk = pickText(source, ['thinking', 'reasoning', 'reasoning_content', 'reasoningContent', 'think'], { trim: false }) || '';
+    thinkingChunk =
+      pickText(
+        source,
+        [
+          "thinking",
+          "reasoning",
+          "reasoning_content",
+          "reasoningContent",
+          "think",
+        ],
+        { trim: false },
+      ) || "";
   }
 
   return {
@@ -323,13 +383,25 @@ const extractDeltaFromSource = (source: Record<string, unknown>): { contentChunk
 
 const resolveApiErrorMessage = (payload: unknown, status: number): string => {
   if (isRecord(payload)) {
-    const directMessage = pickText(payload, ['error', 'message', 'msg', 'detail', 'description']);
+    const directMessage = pickText(payload, [
+      "error",
+      "message",
+      "msg",
+      "detail",
+      "description",
+    ]);
     if (directMessage) {
       return directMessage;
     }
 
     if (isRecord(payload.data)) {
-      const dataMessage = pickText(payload.data, ['error', 'message', 'msg', 'detail', 'description']);
+      const dataMessage = pickText(payload.data, [
+        "error",
+        "message",
+        "msg",
+        "detail",
+        "description",
+      ]);
       if (dataMessage) {
         return dataMessage;
       }
@@ -340,12 +412,16 @@ const resolveApiErrorMessage = (payload: unknown, status: number): string => {
 };
 
 const mapChatError = (error: unknown): Error => {
-  if (error instanceof DOMException && error.name === 'AbortError') {
-    return new Error(`聊天请求超时（前端 ${Math.ceil(FRONTEND_CHAT_TIMEOUT_MS / 1000)} 秒），请稍后重试`);
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return new Error(
+      `聊天请求超时（前端 ${Math.ceil(FRONTEND_CHAT_TIMEOUT_MS / 1000)} 秒），请稍后重试`,
+    );
   }
 
-  if (error instanceof Error && error.name === 'AbortError') {
-    return new Error(`聊天请求超时（前端 ${Math.ceil(FRONTEND_CHAT_TIMEOUT_MS / 1000)} 秒），请稍后重试`);
+  if (error instanceof Error && error.name === "AbortError") {
+    return new Error(
+      `聊天请求超时（前端 ${Math.ceil(FRONTEND_CHAT_TIMEOUT_MS / 1000)} 秒），请稍后重试`,
+    );
   }
 
   if (error instanceof HttpClientError) {
@@ -360,26 +436,36 @@ const mapChatError = (error: unknown): Error => {
     }
 
     if (resolvedStatus === 502 || resolvedStatus === 504) {
-      return new Error(`上游模型服务暂时不可用（${resolvedStatus}），请稍后重试`);
+      return new Error(
+        `上游模型服务暂时不可用（${resolvedStatus}），请稍后重试`,
+      );
     }
 
     if (resolvedStatus) {
-      return new Error(error.message || `聊天请求失败（HTTP ${resolvedStatus}）`);
+      return new Error(
+        error.message || `聊天请求失败（HTTP ${resolvedStatus}）`,
+      );
     }
 
-    return new Error(error.message || '聊天请求失败，请稍后重试');
+    return new Error(error.message || "聊天请求失败，请稍后重试");
   }
 
   if (error instanceof Error) {
     return error;
   }
 
-  return new Error('聊天请求失败，请稍后重试');
+  return new Error("聊天请求失败，请稍后重试");
 };
 
 const processParsedPayload = (
   parsed: unknown,
-  state: { content: string; thinking: string; durationMs?: number; conversationId?: number; quota: QuotaInfo },
+  state: {
+    content: string;
+    thinking: string;
+    durationMs?: number;
+    conversationId?: number;
+    quota: QuotaInfo;
+  },
   onDelta?: (next: StreamState) => void,
 ): void => {
   if (!isRecord(parsed)) {
@@ -388,7 +474,7 @@ const processParsedPayload = (
 
   let source: Record<string, unknown> = parsed;
 
-  if (typeof parsed.code === 'number') {
+  if (typeof parsed.code === "number") {
     const businessCode = parsed.code;
     if (businessCode < 200 || businessCode >= 300) {
       throw new HttpClientError(
@@ -402,11 +488,14 @@ const processParsedPayload = (
     if (isRecord(parsed.data)) {
       state.quota = extractQuotaInfo(parsed.data, state.quota);
       state.durationMs = extractDurationMs(parsed.data, state.durationMs);
-      state.conversationId = extractConversationId(parsed.data, state.conversationId);
+      state.conversationId = extractConversationId(
+        parsed.data,
+        state.conversationId,
+      );
 
       if (isRecord(parsed.data.upstream)) {
         source = parsed.data.upstream;
-      } else if (typeof parsed.data.upstream === 'string') {
+      } else if (typeof parsed.data.upstream === "string") {
         source = { response: parsed.data.upstream };
       } else {
         source = parsed.data;
@@ -456,7 +545,9 @@ export const generateChatResponse = async (
     messages: buildChatMessages(history, currentMessage, attachments),
   };
 
-  const normalizedConversationId = normalizeConversationId(options.conversationId);
+  const normalizedConversationId = normalizeConversationId(
+    options.conversationId,
+  );
   if (normalizedConversationId) {
     payload.conversation_id = normalizedConversationId;
   }
@@ -467,10 +558,10 @@ export const generateChatResponse = async (
   }, FRONTEND_CHAT_TIMEOUT_MS);
 
   try {
-    const response = await fetch(buildUrl('/llm/chat'), {
-      method: 'POST',
+    const response = await fetch(buildUrl("/llm/chat"), {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
       signal: abortController.signal,
@@ -480,20 +571,25 @@ export const generateChatResponse = async (
       const rawText = await response.text();
       const parsed = rawText ? tryParseJson(rawText) : null;
       const message = resolveApiErrorMessage(parsed, response.status);
-      const businessCode = isRecord(parsed) && typeof parsed.code === 'number' ? parsed.code : undefined;
+      const businessCode =
+        isRecord(parsed) && typeof parsed.code === "number"
+          ? parsed.code
+          : undefined;
 
       throw new HttpClientError(message, response.status, businessCode, parsed);
     }
 
     const streamState = {
-      content: '',
-      thinking: '',
+      content: "",
+      thinking: "",
       durationMs: undefined as number | undefined,
       conversationId: undefined as number | undefined,
       quota: {} as QuotaInfo,
     };
 
-    const conversationIdFromHeader = normalizeConversationId(response.headers.get('X-Conversation-ID'));
+    const conversationIdFromHeader = normalizeConversationId(
+      response.headers.get("X-Conversation-ID"),
+    );
     if (conversationIdFromHeader) {
       streamState.conversationId = conversationIdFromHeader;
       options.onConversationId?.(conversationIdFromHeader);
@@ -502,21 +598,29 @@ export const generateChatResponse = async (
     if (!response.body) {
       const rawText = await response.text();
       if (rawText.trim()) {
-        processParsedPayload(tryParseJson(rawText), streamState, options.onDelta);
+        processParsedPayload(
+          tryParseJson(rawText),
+          streamState,
+          options.onDelta,
+        );
       }
 
       return {
-        content: streamState.content.trim() || '请求成功，但暂未解析到模型文本输出。',
+        content:
+          streamState.content.trim() || "请求成功，但暂未解析到模型文本输出。",
         thinking: streamState.thinking.trim() || undefined,
-        quota: Object.keys(streamState.quota).length > 0 ? streamState.quota : undefined,
+        quota:
+          Object.keys(streamState.quota).length > 0
+            ? streamState.quota
+            : undefined,
         durationMs: streamState.durationMs,
         conversationId: streamState.conversationId,
       };
     }
 
     const reader = response.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let buffer = '';
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
 
     while (true) {
       const { value, done } = await reader.read();
@@ -525,8 +629,8 @@ export const generateChatResponse = async (
       }
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
       for (let line of lines) {
         line = line.trim();
@@ -534,11 +638,11 @@ export const generateChatResponse = async (
           continue;
         }
 
-        if (line.startsWith('data:')) {
+        if (line.startsWith("data:")) {
           line = line.slice(5).trim();
         }
 
-        if (!line || line === '[DONE]') {
+        if (!line || line === "[DONE]") {
           continue;
         }
 
@@ -549,18 +653,18 @@ export const generateChatResponse = async (
     buffer += decoder.decode();
     const tail = buffer.trim();
     if (tail) {
-      const tailLines = tail.split('\n');
+      const tailLines = tail.split("\n");
       for (let line of tailLines) {
         line = line.trim();
         if (!line) {
           continue;
         }
 
-        if (line.startsWith('data:')) {
+        if (line.startsWith("data:")) {
           line = line.slice(5).trim();
         }
 
-        if (!line || line === '[DONE]') {
+        if (!line || line === "[DONE]") {
           continue;
         }
 
@@ -569,9 +673,13 @@ export const generateChatResponse = async (
     }
 
     return {
-      content: streamState.content.trim() || '请求成功，但暂未解析到模型文本输出。',
+      content:
+        streamState.content.trim() || "请求成功，但暂未解析到模型文本输出。",
       thinking: streamState.thinking.trim() || undefined,
-      quota: Object.keys(streamState.quota).length > 0 ? streamState.quota : undefined,
+      quota:
+        Object.keys(streamState.quota).length > 0
+          ? streamState.quota
+          : undefined,
       durationMs: streamState.durationMs,
       conversationId: streamState.conversationId,
     };
@@ -580,8 +688,4 @@ export const generateChatResponse = async (
   } finally {
     window.clearTimeout(timeoutTimer);
   }
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)

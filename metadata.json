@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "name": "Mintal AI Chat",
-=======
   "name": "Mintal AI 平台",
->>>>>>> 14dbbca (feat:新增目录逻辑，修复若干bug)
   "description": "A professional, aesthetically pleasing AI chat application inspired by Linear/Notion design principles, powered by Gemini.",
   "requestFramePermissions": []
 }
