@@ -75,7 +75,7 @@ const ChatIndex: React.FC<{
     // Container: Fixed to the right, vertically centered.
     // Increased right margin (right-4 sm:right-8) to give breathing room.
     // pointer-events-none allows clicking through the empty space to the chat below.
-    <div className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-50 flex flex-col items-end gap-1.5 pointer-events-none py-4 max-h-[70vh]">
+    <div className="hidden sm:flex absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-50 flex-col items-end gap-1.5 pointer-events-none py-4 max-h-[70vh]">
       {targets.map((msg) => {
         const isActive = activeId === msg.id;
         const isHovered = hoveredId === msg.id;
@@ -160,6 +160,47 @@ const MessageBubble: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(message.content);
   const [copied, setCopied] = useState(false);
+  const [isEditJellyActive, setIsEditJellyActive] = useState(false);
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
+  const [isThinkingJellyActive, setIsThinkingJellyActive] = useState(false);
+  const editJellyTimerRef = useRef<number | null>(null);
+  const thinkingJellyTimerRef = useRef<number | null>(null);
+
+  const triggerJelly = (
+    setActive: React.Dispatch<React.SetStateAction<boolean>>,
+    timerRef: React.MutableRefObject<number | null>,
+  ) => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setActive(false);
+    window.requestAnimationFrame(() => {
+      setActive(true);
+      timerRef.current = window.setTimeout(() => {
+        setActive(false);
+        timerRef.current = null;
+      }, 620);
+    });
+  };
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(message.content);
+    }
+  }, [isEditing, message.content]);
+
+  useEffect(() => {
+    return () => {
+      if (editJellyTimerRef.current !== null) {
+        window.clearTimeout(editJellyTimerRef.current);
+      }
+      if (thinkingJellyTimerRef.current !== null) {
+        window.clearTimeout(thinkingJellyTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -179,6 +220,17 @@ const MessageBubble: React.FC<{
     setEditValue(message.content);
   };
 
+  const handleStartEdit = () => {
+    triggerJelly(setIsEditJellyActive, editJellyTimerRef);
+    setIsEditing(true);
+    setEditValue(message.content);
+  };
+
+  const handleToggleThinking = () => {
+    triggerJelly(setIsThinkingJellyActive, thinkingJellyTimerRef);
+    setIsThinkingExpanded((previous) => !previous);
+  };
+
   if (isUser) {
     return (
       <div
@@ -192,6 +244,7 @@ const MessageBubble: React.FC<{
              relative px-4 py-2.5 rounded-[24px] rounded-br-sm
              bg-gradient-to-br from-cheese-400 to-cheese-600 dark:from-starlight-500 dark:to-blue-600
              text-white shadow-md transition-all duration-300
+             ${isEditJellyActive ? "animate-jelly" : ""}
            `}
           >
             {isEditing ? (
@@ -226,10 +279,8 @@ const MessageBubble: React.FC<{
 
             {!isEditing && onEdit && (
               <button
-                onClick={() => {
-                  setIsEditing(true);
-                  setEditValue(message.content);
-                }}
+                type="button"
+                onClick={handleStartEdit}
                 className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 text-warm-400 dark:text-slate-400 hover:text-cheese-500 dark:hover:text-starlight-300 transition-all bg-white/50 dark:bg-black/20 backdrop-blur-sm rounded-full shadow-sm hover:scale-110"
                 title="编辑消息"
               >
@@ -290,29 +341,51 @@ const MessageBubble: React.FC<{
         >
           {/* Thinking Block */}
           {hasThinking && (
-            <div className="mb-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 mb-2 select-none">
-                <div className="p-1 bg-slate-100 dark:bg-white/5 rounded-full">
-                  <Brain
-                    size={12}
-                    className={
-                      message.isStreaming && !message.content
-                        ? "animate-pulse"
-                        : ""
-                    }
-                  />
+            <div
+              className={`mb-4 rounded-2xl bg-slate-50/70 dark:bg-white/[0.04] border border-slate-100/80 dark:border-white/5 transition-all duration-300 ${isThinkingJellyActive ? "animate-jelly" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 select-none">
+                  <div className="p-1 bg-slate-100 dark:bg-white/5 rounded-full">
+                    <Brain
+                      size={12}
+                      className={
+                        message.isStreaming && !message.content
+                          ? "animate-pulse"
+                          : ""
+                      }
+                    />
+                  </div>
+                  <span>深度思考</span>
+                  {message.thinkingDurationMs &&
+                    message.thinkingDurationMs > 0 && (
+                      <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-mono">
+                        {(message.thinkingDurationMs / 1000).toFixed(1)}s
+                      </span>
+                    )}
                 </div>
-                <span>深度思考</span>
-                {message.thinkingDurationMs &&
-                  message.thinkingDurationMs > 0 && (
-                    <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-mono">
-                      {(message.thinkingDurationMs / 1000).toFixed(1)}s
-                    </span>
-                  )}
+                <button
+                  type="button"
+                  onClick={handleToggleThinking}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 dark:border-white/10 px-2 py-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-cheese-600 dark:hover:text-starlight-300 hover:border-cheese-200 dark:hover:border-starlight-500/40 transition-all duration-300 active:scale-95"
+                  aria-expanded={isThinkingExpanded}
+                  aria-label={isThinkingExpanded ? "收起深度思考" : "展开深度思考"}
+                >
+                  <span>{isThinkingExpanded ? "收起" : "展开"}</span>
+                  <ChevronDown
+                    size={11}
+                    className={`transition-transform duration-300 ${isThinkingExpanded ? "rotate-180" : ""}`}
+                  />
+                </button>
               </div>
-              <div className="pl-3 border-l-2 border-slate-200 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed opacity-90">
-                {message.thinking}
-              </div>
+
+              {isThinkingExpanded && (
+                <div className="px-3 pb-3">
+                  <div className="pl-3 border-l-2 border-slate-200 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed opacity-90">
+                    {message.thinking}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -429,6 +502,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     messages.length > 0 ? Math.min(2, messages.length - 1) : -1;
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+      return;
+    }
+
     bottomRef.current?.scrollIntoView({ behavior, block: "end" });
   }, []);
 
@@ -989,10 +1071,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   <button
                     type="button"
                     onClick={handleScrollToBottomClick}
-                    className={`inline-flex items-center gap-1.5 rounded-full border border-white/70 dark:border-white/15 bg-white/95 dark:bg-night-card/95 px-4 py-2 text-xs font-bold text-warm-700 dark:text-slate-100 shadow-soft backdrop-blur ${SMOOTH_SPRING_TRANSITION} hover:-translate-y-0.5 hover:shadow-cheese-sm dark:hover:shadow-glow active:scale-95`}
+                    aria-label="回到底部"
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-white/70 dark:border-white/15 bg-white/95 dark:bg-night-card/95 px-2.5 sm:px-4 py-2 text-xs font-bold text-warm-700 dark:text-slate-100 shadow-soft backdrop-blur whitespace-nowrap ${SMOOTH_SPRING_TRANSITION} hover:-translate-y-0.5 hover:shadow-cheese-sm dark:hover:shadow-glow active:scale-95`}
                   >
                     <ArrowDown size={14} />
-                    <span>回到底部</span>
+                    <span className="hidden sm:inline">回到底部</span>
                   </button>
                 </div>
               )}
