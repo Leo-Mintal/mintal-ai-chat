@@ -90,7 +90,7 @@ pnpm preview
 
 ## Backend Integration
 
-If you also maintain [mintal-ai-go](../mintal-ai-go/README.md), this is the recommended local flow:
+If you also maintain [mintal-ai-go](https://github.com/Leo-Mintal/mintal-ai-go), this is the recommended local flow:
 
 1. Start the backend API, usually at `http://127.0.0.1:18080`
 2. Keep `VITE_API_BASE_URL=/api/v1` in this frontend

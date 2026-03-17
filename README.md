@@ -90,7 +90,7 @@ pnpm preview
 
 ## 与后端联调
 
-如果你同时维护 [mintal-ai-go](../mintal-ai-go/README.md)，建议采用下面的联调方式：
+如果你同时维护 [mintal-ai-go](https://github.com/Leo-Mintal/mintal-ai-go)，建议采用下面的联调方式：
 
 1. 在后端项目中启动 API 服务，默认地址为 `http://127.0.0.1:18080`
 2. 在当前项目保留 `VITE_API_BASE_URL=/api/v1`
