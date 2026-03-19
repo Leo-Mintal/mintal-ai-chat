@@ -16,10 +16,8 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  // Smoother Spring Physics
-  // transition-timing-function: cubic-bezier(0.34, 1.3, 0.64, 1); <-- Sophisticated soft spring
   const baseStyles =
-    "inline-flex items-center justify-center font-bold tracking-wide transition-all duration-300 ease-spring focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 hover:-translate-y-0.5 hover:scale-[1.02]";
+    "inline-flex items-center justify-center font-bold tracking-wide transition-all duration-200 ease-spring motion-reduce:transition-none focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] hover:-translate-y-px hover:scale-[1.008]";
 
   const variants = {
     // Gradient Orange/Yellow for that "Creamy" pop

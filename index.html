@@ -58,60 +58,62 @@
               }
             },
             transitionTimingFunction: {
-              // A smooth, sophisticated spring curve.
-              // Not too harsh (was 1.6), just enough bounce (1.3).
-              'spring': 'cubic-bezier(0.34, 1.3, 0.64, 1)',
-              'soft': 'cubic-bezier(0.4, 0, 0.2, 1)',
+              // Snappier spring curve with a softer, tighter rebound.
+              'spring': 'cubic-bezier(0.24, 0.92, 0.32, 1.02)',
+              'soft': 'cubic-bezier(0.22, 1, 0.36, 1)',
             },
             animation: {
-              // Smooth page entry: Slight scale up + fade + mild bounce
-              'pop-in': 'popIn 0.5s cubic-bezier(0.34, 1.3, 0.64, 1) both',
-              // List items entry
-              'slide-up-bouncy': 'slideUpBouncy 0.6s cubic-bezier(0.34, 1.3, 0.64, 1) both',
-              'bounce-soft': 'bounceSoft 2s infinite',
+              'pop-in': 'popIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both',
+              'slide-up-bouncy': 'slideUpBouncy 0.3s cubic-bezier(0.24, 0.92, 0.32, 1.02) both',
+              'bounce-soft': 'bounceSoft 2.2s ease-in-out infinite',
               'float': 'float 6s ease-in-out infinite',
-              'scale-click': 'scaleClick 0.1s ease-out',
-              'twinkle': 'twinkle 4s ease-in-out infinite',
-              'jelly': 'jelly 0.6s both',
-              'wiggle': 'wiggle 1s ease-in-out infinite',
+              'scale-click': 'scaleClick 0.08s ease-out',
+              'twinkle': 'twinkle 3.2s ease-in-out infinite',
+              'jelly': 'jelly 0.3s cubic-bezier(0.22, 1, 0.36, 1) both',
+              'wiggle': 'wiggle 0.9s ease-in-out infinite',
+              'soft-reveal': 'softReveal 0.24s cubic-bezier(0.22, 1, 0.36, 1) both',
             },
             keyframes: {
               popIn: {
-                '0%': { opacity: '0', transform: 'scale(0.96) translateY(8px)' },
+                '0%': { opacity: '0', transform: 'scale(0.992) translateY(4px)' },
                 '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
               },
               slideUpBouncy: {
-                '0%': { opacity: '0', transform: 'translateY(20px) scale(0.96)' },
+                '0%': { opacity: '0', transform: 'translateY(10px) scale(0.992)' },
+                '60%': { opacity: '1', transform: 'translateY(-1px) scale(1.002)' },
                 '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
               },
               bounceSoft: {
-                '0%, 100%': { transform: 'translateY(-5%)' },
+                '0%, 100%': { transform: 'translateY(-1.5%)' },
                 '50%': { transform: 'translateY(0)' },
               },
               float: {
                 '0%, 100%': { transform: 'translateY(0) rotate(0deg)' },
-                '50%': { transform: 'translateY(-10px) rotate(2deg)' },
+                '50%': { transform: 'translateY(-4px) rotate(0.5deg)' },
               },
               scaleClick: {
                 '0%': { transform: 'scale(1)' },
-                '50%': { transform: 'scale(0.95)' },
+                '50%': { transform: 'scale(0.97)' },
                 '100%': { transform: 'scale(1)' },
               },
               twinkle: {
-                '0%, 100%': { opacity: '0.3', transform: 'scale(0.8)' },
-                '50%': { opacity: '1', transform: 'scale(1.2)' },
+                '0%, 100%': { opacity: '0.35', transform: 'scale(0.92)' },
+                '50%': { opacity: '1', transform: 'scale(1.08)' },
               },
               jelly: {
                 '0%': { transform: 'scale(1, 1)' },
-                '30%': { transform: 'scale(1.15, 0.85)' }, // Reduced intensity
-                '40%': { transform: 'scale(0.90, 1.10)' },
-                '50%': { transform: 'scale(1.05, 0.95)' },
-                '65%': { transform: 'scale(0.98, 1.02)' },
+                '30%': { transform: 'scale(1.018, 0.988)' },
+                '50%': { transform: 'scale(0.995, 1.005)' },
+                '70%': { transform: 'scale(1.005, 0.997)' },
                 '100%': { transform: 'scale(1, 1)' },
               },
               wiggle: {
-                '0%, 100%': { transform: 'rotate(-3deg)' },
-                '50%': { transform: 'rotate(3deg)' },
+                '0%, 100%': { transform: 'rotate(-0.8deg)' },
+                '50%': { transform: 'rotate(0.8deg)' },
+              },
+              softReveal: {
+                '0%': { opacity: '0', transform: 'translateY(6px) scale(0.985)' },
+                '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
               }
             },
             boxShadow: {
@@ -155,6 +157,17 @@
         font-family: 'Nunito', 'Noto Sans SC', system-ui, sans-serif; /* Explicitly set body font */
       }
 
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
       ::selection {
         background: #FFE0B2;
         color: #5D4037;
@@ -188,7 +201,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-cream-50 dark:bg-night-bg text-warm-800 dark:text-starlight-100 antialiased transition-colors duration-700">
+  <body class="bg-cream-50 dark:bg-night-bg text-warm-800 dark:text-starlight-100 antialiased transition-colors duration-300">
     <div id="root" class="h-full"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

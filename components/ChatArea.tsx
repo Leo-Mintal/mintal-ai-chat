@@ -28,8 +28,6 @@ import {
   Brain,
   Zap,
 } from "lucide-react";
-import { Button } from "./ui/Button";
-import { Switch } from "./ui/Switch";
 
 interface ChatAreaProps {
   conversationId: string | null;
@@ -54,7 +52,8 @@ interface ChatAreaProps {
 }
 
 // Sophisticated Spring Physics
-const SMOOTH_SPRING_TRANSITION = "transition-all duration-500 ease-spring";
+const SMOOTH_SPRING_TRANSITION =
+  "transition-all duration-200 ease-spring motion-reduce:transition-none";
 
 // --- New Component: Chat Index (Barcode Minimap) ---
 const ChatIndex: React.FC<{
@@ -134,7 +133,7 @@ const ChatIndex: React.FC<{
                 h-1.5 rounded-full transition-all duration-300 ease-out
                 ${
                   isActive
-                    ? "bg-cheese-500 dark:bg-starlight-500 scale-125 shadow-[0_0_8px_rgba(251,140,0,0.5)] dark:shadow-[0_0_8px_rgba(14,165,233,0.5)]"
+                    ? "bg-cheese-500 dark:bg-starlight-500 scale-110 shadow-[0_0_8px_rgba(251,140,0,0.5)] dark:shadow-[0_0_8px_rgba(14,165,233,0.5)]"
                     : isHovered
                       ? "bg-cheese-400 dark:bg-starlight-400 scale-x-110"
                       : "bg-slate-300/60 dark:bg-white/10"
@@ -160,30 +159,16 @@ const MessageBubble: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(message.content);
   const [copied, setCopied] = useState(false);
-  const [isEditJellyActive, setIsEditJellyActive] = useState(false);
-  const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
-  const [isThinkingJellyActive, setIsThinkingJellyActive] = useState(false);
-  const editJellyTimerRef = useRef<number | null>(null);
-  const thinkingJellyTimerRef = useRef<number | null>(null);
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(() => {
+    const thinkingCompleted =
+      Boolean(message.thinking) &&
+      !message.isStreaming &&
+      Boolean(message.content);
 
-  const triggerJelly = (
-    setActive: React.Dispatch<React.SetStateAction<boolean>>,
-    timerRef: React.MutableRefObject<number | null>,
-  ) => {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-
-    setActive(false);
-    window.requestAnimationFrame(() => {
-      setActive(true);
-      timerRef.current = window.setTimeout(() => {
-        setActive(false);
-        timerRef.current = null;
-      }, 620);
-    });
-  };
+    return !thinkingCompleted;
+  });
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasThinking = Boolean(message.thinking);
 
   useEffect(() => {
     if (!isEditing) {
@@ -192,15 +177,20 @@ const MessageBubble: React.FC<{
   }, [isEditing, message.content]);
 
   useEffect(() => {
-    return () => {
-      if (editJellyTimerRef.current !== null) {
-        window.clearTimeout(editJellyTimerRef.current);
-      }
-      if (thinkingJellyTimerRef.current !== null) {
-        window.clearTimeout(thinkingJellyTimerRef.current);
-      }
-    };
-  }, []);
+    if (!isEditing || !editTextareaRef.current) {
+      return;
+    }
+
+    editTextareaRef.current.focus();
+    const cursor = editTextareaRef.current.value.length;
+    editTextareaRef.current.setSelectionRange(cursor, cursor);
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (hasThinking && !message.isStreaming && message.content) {
+      setIsThinkingExpanded(false);
+    }
+  }, [hasThinking, message.content, message.id, message.isStreaming]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -221,13 +211,11 @@ const MessageBubble: React.FC<{
   };
 
   const handleStartEdit = () => {
-    triggerJelly(setIsEditJellyActive, editJellyTimerRef);
     setIsEditing(true);
     setEditValue(message.content);
   };
 
   const handleToggleThinking = () => {
-    triggerJelly(setIsThinkingJellyActive, thinkingJellyTimerRef);
     setIsThinkingExpanded((previous) => !previous);
   };
 
@@ -241,50 +229,59 @@ const MessageBubble: React.FC<{
         <div className="flex items-end gap-2 max-w-[95%] sm:max-w-[85%]">
           <div
             className={`
-             relative px-4 py-2.5 rounded-[24px] rounded-br-sm
-             bg-gradient-to-br from-cheese-400 to-cheese-600 dark:from-starlight-500 dark:to-blue-600
-             text-white shadow-md transition-all duration-300
-             ${isEditJellyActive ? "animate-jelly" : ""}
+             relative overflow-visible px-4 py-2.5 rounded-[24px] rounded-br-sm
+             bg-gradient-to-br from-cheese-400 via-cheese-500 to-cheese-600 dark:from-[#58c4f5] dark:via-[#359ee8] dark:to-[#2f75d2]
+             text-white ${isEditing ? "ring-0" : "ring-1 ring-white/10 dark:ring-white/[0.05]"}
+             shadow-[0_14px_28px_-18px_rgba(251,140,0,0.42)] dark:shadow-[0_16px_30px_-20px_rgba(37,117,210,0.58)]
+             transition-[transform,box-shadow,filter] duration-200 ease-spring
+             ${isEditing ? "shadow-[0_18px_32px_-18px_rgba(15,23,42,0.34)] dark:shadow-[0_20px_34px_-20px_rgba(37,117,210,0.64)]" : ""}
            `}
           >
-            {isEditing ? (
-              <div className="min-w-[240px]">
-                <textarea
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full bg-white/20 text-white rounded-lg p-2 outline-none border border-white/30 text-sm focus:bg-white/30 transition-colors resize-none"
-                  rows={3}
-                  autoFocus
-                />
-                <div className="flex justify-end gap-2 mt-2">
-                  <button
-                    onClick={cancelEdit}
-                    className="text-xs opacity-80 hover:opacity-100 hover:bg-white/10 px-2 py-1 rounded transition-colors"
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    className="text-xs font-bold bg-white/20 px-3 py-1 rounded hover:bg-white/30 transition-colors shadow-sm"
-                  >
-                    保存
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed">
+            <div className="relative min-w-[140px]">
+              <div
+                className={`whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed transition-all duration-200 ease-spring ${isEditing ? "pointer-events-none absolute inset-0 -translate-y-1 scale-[0.985] opacity-0" : "relative translate-y-0 scale-100 opacity-100"}`}
+              >
                 {message.content}
               </div>
-            )}
+
+              <div
+                className={`transition-all duration-200 ease-spring ${isEditing ? "relative translate-y-0 scale-100 opacity-100 animate-soft-reveal" : "pointer-events-none absolute inset-0 translate-y-1 scale-[0.985] opacity-0"}`}
+              >
+                <div className="min-w-[240px] sm:min-w-[280px] rounded-[20px] bg-black/10 dark:bg-[#18304f] p-3 shadow-[0_18px_30px_-18px_rgba(15,23,42,0.28)]">
+                  <textarea
+                    ref={editTextareaRef}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="w-full min-h-[96px] bg-transparent text-white rounded-[16px] px-3 py-2.5 outline-none border border-transparent text-sm leading-7 focus:bg-transparent focus:border-transparent transition-all duration-200 resize-none"
+                    rows={3}
+                  />
+                  <div className="flex justify-end gap-2 mt-2.5">
+                    <button
+                      onClick={cancelEdit}
+                      className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold text-white/85 bg-white/10 hover:bg-white/16 transition-colors duration-200"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold bg-white/22 hover:bg-white/30 transition-colors duration-200 shadow-sm"
+                    >
+                      保存
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {!isEditing && onEdit && (
               <button
                 type="button"
                 onClick={handleStartEdit}
-                className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 text-warm-400 dark:text-slate-400 hover:text-cheese-500 dark:hover:text-starlight-300 transition-all bg-white/50 dark:bg-black/20 backdrop-blur-sm rounded-full shadow-sm hover:scale-110"
+                className="absolute right-full top-1/2 z-10 mr-3 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-cheese-200/95 dark:border-white/[0.06] bg-white/96 dark:bg-[#0b1220]/70 text-warm-600 dark:text-slate-200 shadow-[0_12px_24px_-18px_rgba(93,64,55,0.22)] dark:shadow-[0_12px_24px_-18px_rgba(15,23,42,0.6)] backdrop-blur-md opacity-95 sm:opacity-75 sm:-translate-x-0.5 sm:group-hover:translate-x-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-x-0 sm:group-focus-within:opacity-100 hover:text-warm-700 dark:hover:text-white hover:bg-white dark:hover:bg-[#111c31] transition-all duration-200 ease-spring hover:scale-[1.02] active:scale-[0.97]"
                 title="编辑消息"
+                aria-label="编辑消息"
               >
-                <Pencil size={14} />
+                <Pencil size={13} />
               </button>
             )}
           </div>
@@ -322,7 +319,6 @@ const MessageBubble: React.FC<{
   }
 
   // Model Message
-  const hasThinking = !!message.thinking;
   const showBubble = aiBubbleEnabled;
 
   return (
@@ -337,16 +333,16 @@ const MessageBubble: React.FC<{
         </div>
 
         <div
-          className={`flex-1 min-w-0 transition-all duration-300 ${showBubble ? "bg-white/80 dark:bg-night-surface/80 backdrop-blur-sm border border-slate-100 dark:border-white/5 rounded-[24px] rounded-tl-sm px-5 py-4 shadow-sm hover:shadow-md" : "px-2 py-1"}`}
+          className={`flex-1 min-w-0 transition-all duration-200 ease-spring ${showBubble ? "bg-white/88 dark:bg-[#101827]/82 backdrop-blur-md border border-white/70 dark:border-white/[0.06] rounded-[26px] rounded-tl-[12px] px-5 py-[18px] shadow-[0_16px_32px_-24px_rgba(15,23,42,0.22)] dark:shadow-[0_16px_32px_-24px_rgba(2,6,23,0.62)] hover:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.3)] dark:hover:shadow-[0_18px_36px_-24px_rgba(2,6,23,0.74)]" : "px-3 py-2 sm:px-4 sm:py-3"}`}
         >
           {/* Thinking Block */}
           {hasThinking && (
             <div
-              className={`mb-4 rounded-2xl bg-slate-50/70 dark:bg-white/[0.04] border border-slate-100/80 dark:border-white/5 transition-all duration-300 ${isThinkingJellyActive ? "animate-jelly" : ""}`}
+              className="mb-4 rounded-[24px] bg-[linear-gradient(180deg,rgba(255,247,236,0.9),rgba(255,241,221,0.68))] dark:bg-[linear-gradient(180deg,rgba(14,22,36,0.94),rgba(16,25,39,0.86))] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_18px_30px_-28px_rgba(93,64,55,0.2)] dark:shadow-[inset_0_1px_0_rgba(148,163,184,0.04),0_18px_30px_-26px_rgba(2,6,23,0.88)] ring-1 ring-inset ring-white/0 dark:ring-[#223551]/85 transition-colors duration-200"
             >
               <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 select-none">
-                  <div className="p-1 bg-slate-100 dark:bg-white/5 rounded-full">
+                <div className="flex items-center gap-2 text-xs font-bold text-warm-500 dark:text-slate-400 select-none">
+                  <div className="rounded-full bg-cheese-100/78 p-1.5 text-cheese-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.32)] dark:bg-[#1a2a42] dark:text-sky-200 dark:shadow-none">
                     <Brain
                       size={12}
                       className={
@@ -359,7 +355,7 @@ const MessageBubble: React.FC<{
                   <span>深度思考</span>
                   {message.thinkingDurationMs &&
                     message.thinkingDurationMs > 0 && (
-                      <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-mono">
+                      <span className="rounded-full bg-cheese-100/68 px-1.5 py-0.5 text-[10px] font-mono text-warm-500 dark:bg-[#18263c] dark:text-slate-400">
                         {(message.thinkingDurationMs / 1000).toFixed(1)}s
                       </span>
                     )}
@@ -367,31 +363,37 @@ const MessageBubble: React.FC<{
                 <button
                   type="button"
                   onClick={handleToggleThinking}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 dark:border-white/10 px-2 py-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-cheese-600 dark:hover:text-starlight-300 hover:border-cheese-200 dark:hover:border-starlight-500/40 transition-all duration-300 active:scale-95"
+                  className="inline-flex items-center gap-1 rounded-full bg-cheese-100/55 px-2.5 py-1 text-[10px] font-bold text-warm-600 dark:bg-[#18263b] dark:text-slate-300 hover:bg-cheese-100/78 hover:text-cheese-700 dark:hover:bg-[#1d304a] dark:hover:text-starlight-200 transition-all duration-200 ease-spring hover:scale-[1.01] active:scale-[0.98]"
                   aria-expanded={isThinkingExpanded}
                   aria-label={isThinkingExpanded ? "收起深度思考" : "展开深度思考"}
                 >
                   <span>{isThinkingExpanded ? "收起" : "展开"}</span>
                   <ChevronDown
                     size={11}
-                    className={`transition-transform duration-300 ${isThinkingExpanded ? "rotate-180" : ""}`}
+                    className={`transition-transform duration-200 ease-spring ${isThinkingExpanded ? "rotate-180" : ""}`}
                   />
                 </button>
               </div>
 
-              {isThinkingExpanded && (
-                <div className="px-3 pb-3">
-                  <div className="pl-3 border-l-2 border-slate-200 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed opacity-90">
-                    {message.thinking}
+              <div
+                className={`grid transition-[grid-template-rows,opacity] duration-200 ease-spring ${isThinkingExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+              >
+                <div className="overflow-hidden">
+                  <div
+                    className={`px-3 pb-3 transition-all duration-200 ease-spring ${isThinkingExpanded ? "translate-y-0 scale-100" : "-translate-y-1 scale-[0.985]"}`}
+                  >
+                    <div className="rounded-[18px] bg-black/[0.025] px-4 py-3 text-[12px] text-warm-600/92 dark:bg-white/[0.025] dark:text-slate-300/92 whitespace-pre-wrap leading-[1.92] tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] dark:shadow-[inset_0_1px_0_rgba(148,163,184,0.03)]">
+                      {message.thinking}
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
           {/* Content */}
           <div
-            className={`prose prose-sm sm:prose-base dark:prose-invert max-w-none break-words leading-relaxed ${message.isError ? "text-red-500" : "text-slate-700 dark:text-slate-200"} prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-pre:bg-slate-900 prose-pre:text-slate-50 dark:prose-pre:bg-black/50 prose-pre:rounded-xl prose-pre:p-4`}
+            className={`prose prose-sm sm:prose-base dark:prose-invert max-w-none break-words leading-[1.92] ${message.isError ? "text-red-500" : "text-slate-700 dark:text-slate-100/95"} prose-p:my-2.5 prose-headings:my-3 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-pre:bg-slate-900 prose-pre:text-slate-50 dark:prose-pre:bg-black/50 prose-pre:rounded-xl prose-pre:p-4`}
           >
             {message.content ? (
               <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -485,6 +487,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     const DEFAULT_HEIGHT = 56;
     const MAX_HEIGHT = 160;
     textareaRef.current.style.height = "auto";
+    if (input.length === 0) {
+      textareaRef.current.style.height = DEFAULT_HEIGHT + "px";
+      textareaRef.current.style.overflowY = "hidden";
+      return;
+    }
     const scrollHeight = textareaRef.current.scrollHeight || DEFAULT_HEIGHT;
     const targetHeight = Math.min(
       Math.max(scrollHeight, DEFAULT_HEIGHT),
@@ -493,7 +500,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     textareaRef.current.style.height = targetHeight + "px";
     textareaRef.current.style.overflowY =
       scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
-  }, []);
+  }, [input]);
 
   const hasStreamingMessage = messages.some(
     (message) => message.role === "model" && message.isStreaming,
@@ -887,7 +894,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             {/* Cute Mascot Animation */}
             <div className="relative mb-8 animate-pop-in z-10">
               <div className="absolute inset-0 bg-cheese-200 dark:bg-starlight-500 rounded-full blur-[40px] opacity-40 animate-pulse"></div>
-              <div className="relative w-28 h-28 bg-gradient-to-br from-white to-cream-100 dark:from-night-card dark:to-night-surface rounded-[40px] shadow-cheese dark:shadow-glow border-4 border-white dark:border-white/10 flex items-center justify-center transform hover:scale-105 transition-transform duration-500 cursor-pointer animate-float hover:rotate-3 ease-spring">
+              <div className="relative w-28 h-28 bg-gradient-to-br from-white to-cream-100 dark:from-night-card dark:to-night-surface rounded-[40px] shadow-cheese dark:shadow-glow border-4 border-white dark:border-white/10 flex items-center justify-center transform hover:scale-[1.02] transition-transform duration-300 cursor-pointer animate-float hover:rotate-2 ease-spring">
                 <Sparkles
                   size={48}
                   className="text-cheese-500 dark:text-starlight-300 drop-shadow-sm"
@@ -920,7 +927,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   onClick={() => !inputDisabled && setInput(suggestion)}
                   disabled={inputDisabled}
                   style={{ animationDelay: `${0.3 + i * 0.1}s` }}
-                  className={`group p-4 bg-white/70 dark:bg-night-card/50 border-2 border-transparent hover:border-cheese-300 dark:hover:border-starlight-500 rounded-[24px] shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow ${SMOOTH_SPRING_TRANSITION} transform hover:-translate-y-1 hover:scale-[1.02] text-left animate-slide-up-bouncy disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:scale-100 active:scale-95`}
+                  className={`group p-4 bg-white/72 dark:bg-night-card/54 border-2 border-transparent hover:border-cheese-300 dark:hover:border-starlight-500 rounded-[24px] shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow ${SMOOTH_SPRING_TRANSITION} transform hover:-translate-y-0.5 hover:scale-[1.01] text-left animate-slide-up-bouncy disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:scale-100 active:scale-[0.98]`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <Wand2
@@ -1004,7 +1011,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   bg-white/80 dark:bg-night-card/80 backdrop-blur-xl border border-white/50 dark:border-white/10
                   rounded-full shadow-cheese-sm dark:shadow-night
                   px-1.5 py-1.5
-                  transition-all duration-500 ease-spring hover:scale-105 hover:shadow-cheese hover:-translate-y-0.5
+                  transition-all duration-300 ease-spring hover:scale-[1.02] hover:shadow-cheese hover:-translate-y-px
                 `}
                   >
                     {quotaError ? (
@@ -1043,7 +1050,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                           type="button"
                           onClick={onRefreshQuota}
                           disabled={!onRefreshQuota || quotaLoading}
-                          className="p-1.5 hover:bg-white/50 dark:hover:bg-white/10 rounded-full text-warm-400 hover:text-cheese-600 transition-colors hover:rotate-180 duration-500"
+                          className="p-1.5 hover:bg-white/50 dark:hover:bg-white/10 rounded-full text-warm-400 hover:text-cheese-600 transition-all duration-300 ease-spring hover:rotate-90"
                         >
                           <RefreshCcw
                             size={12}
@@ -1072,7 +1079,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     type="button"
                     onClick={handleScrollToBottomClick}
                     aria-label="回到底部"
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-white/70 dark:border-white/15 bg-white/95 dark:bg-night-card/95 px-2.5 sm:px-4 py-2 text-xs font-bold text-warm-700 dark:text-slate-100 shadow-soft backdrop-blur whitespace-nowrap ${SMOOTH_SPRING_TRANSITION} hover:-translate-y-0.5 hover:shadow-cheese-sm dark:hover:shadow-glow active:scale-95`}
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-white/70 dark:border-white/15 bg-white/95 dark:bg-night-card/95 px-2.5 sm:px-4 py-2 text-xs font-bold text-warm-700 dark:text-slate-100 shadow-soft backdrop-blur whitespace-nowrap ${SMOOTH_SPRING_TRANSITION} hover:-translate-y-px hover:shadow-cheese-sm dark:hover:shadow-glow active:scale-[0.98]`}
                   >
                     <ArrowDown size={14} />
                     <span className="hidden sm:inline">回到底部</span>
@@ -1084,17 +1091,18 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
           {/* Main Input Box */}
           <div
-            className={`
-             bg-white/90 dark:bg-night-card/90 backdrop-blur-2xl rounded-[32px]
-             shadow-[0_12px_40px_-12px_rgba(0,0,0,0.12)] dark:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)]
-             border border-white/60 dark:border-white/10
-             transition-all duration-500 ease-spring relative flex flex-col overflow-hidden
-             ${isLoading ? "opacity-95 grayscale-[0.3]" : "hover:shadow-[0_20px_50px_-12px_rgba(255,183,77,0.25)] dark:hover:shadow-[0_20px_50px_-12px_rgba(14,165,233,0.25)] hover:scale-[1.005] hover:-translate-y-0.5"}
-             focus-within:ring-2 focus-within:ring-cheese-200/50 dark:focus-within:ring-starlight-500/20 focus-within:scale-[1.005]
+          className={`
+             bg-gradient-to-b from-white/98 to-slate-50/96 dark:from-[#151e30] dark:via-[#121a2a] dark:to-[#101827] backdrop-blur-xl rounded-[32px]
+             shadow-[0_18px_42px_-20px_rgba(15,23,42,0.18)] dark:shadow-[0_20px_42px_-20px_rgba(2,6,23,0.68)]
+             border border-slate-200/80 dark:border-[#22314d]
+             transition-all duration-300 ease-spring relative flex flex-col overflow-hidden
+             ${isLoading ? "opacity-95 grayscale-[0.15]" : "hover:shadow-[0_22px_44px_-20px_rgba(15,23,42,0.2)] dark:hover:shadow-[0_24px_44px_-20px_rgba(2,6,23,0.76)] hover:scale-[1.001] hover:-translate-y-px"}
+             focus-within:ring-2 focus-within:ring-cheese-200/40 dark:focus-within:ring-starlight-400/16 focus-within:scale-[1.001]
           `}
           >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_42%)] dark:bg-none" />
             {/* Upper Area: Text Input */}
-            <div className="relative px-2 pt-1">
+            <div className="relative px-4 pt-4">
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -1103,7 +1111,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
                 placeholder={modelInputPlaceholder}
-                className="w-full max-h-[160px] bg-transparent !border-none border-0 outline-none ring-0 focus:!border-none focus:border-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 resize-none py-4 px-4 text-warm-800 dark:text-slate-100 placeholder:text-warm-300 dark:placeholder:text-slate-500 text-[15px] leading-6 font-medium caret-cheese-500 dark:caret-starlight-300"
+                className="w-full max-h-[160px] bg-transparent !border-none border-0 outline-none ring-0 focus:!border-none focus:border-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 resize-none px-0 py-2 text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-400/90 text-[15px] leading-7 font-medium caret-cheese-500 dark:caret-starlight-300"
                 rows={1}
                 disabled={inputDisabled}
               />
@@ -1111,11 +1119,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
             {/* Middle: Attachments */}
             {attachments.length > 0 && (
-              <div className="flex gap-2 px-4 pb-2 overflow-x-auto custom-scrollbar">
+              <div className="relative flex gap-2 px-4 pb-2 pt-2 overflow-x-auto custom-scrollbar">
                 {attachments.map((file) => (
                   <div
                     key={file.id}
-                    className="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-cheese-50 dark:bg-white/10 rounded-xl text-[11px] font-bold text-warm-700 dark:text-white border border-cheese-200 dark:border-white/10 animate-pop-in shadow-sm"
+                    className="relative flex items-center gap-1.5 px-2.5 py-1.5 bg-cheese-50 dark:bg-[#132138] rounded-xl text-[11px] font-bold text-warm-700 dark:text-slate-100 border border-cheese-200 dark:border-white/[0.06] animate-pop-in shadow-sm"
                   >
                     <span className="truncate max-w-[100px]">{file.name}</span>
                     <button
@@ -1130,13 +1138,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             )}
 
             {/* Bottom Toolbar: Controls & Send */}
-            <div className="flex items-center justify-between px-3 pb-3 pt-1 mt-auto">
+            <div className="relative mt-auto flex items-center justify-between px-3 pb-3 pt-2 border-t border-slate-200/70 dark:border-[#22314d] bg-slate-50/55 dark:bg-[#0f1728]">
               <div className="flex items-center gap-2">
                 {/* Attachment Button */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={inputDisabled}
-                  className={`p-2.5 text-warm-400 dark:text-slate-400 hover:text-cheese-600 dark:hover:text-starlight-200 bg-transparent hover:bg-cheese-50 dark:hover:bg-white/10 rounded-[18px] ${SMOOTH_SPRING_TRANSITION} active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`p-2.5 text-warm-500 dark:text-slate-300 hover:text-cheese-600 dark:hover:text-starlight-200 bg-white/78 dark:bg-[#162238] border border-slate-200/70 dark:border-[#24344f] hover:bg-white dark:hover:bg-[#1b2b45] rounded-[18px] ${SMOOTH_SPRING_TRANSITION} active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <Paperclip size={20} strokeWidth={2.5} />
                 </button>
@@ -1160,28 +1168,26 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   className={`
                        group relative flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer select-none
                        ${SMOOTH_SPRING_TRANSITION}
-                       active:scale-95 hover:scale-102 hover:-translate-y-0.5
+                       active:scale-[0.98] hover:scale-[1.008] hover:-translate-y-px
                        ${
                          thinkEnabled
-                           ? "bg-cheese-500 dark:bg-starlight-500 text-white shadow-cheese-sm dark:shadow-glow"
-                           : "bg-slate-100/50 dark:bg-white/10 text-slate-500 dark:text-slate-400 border border-transparent hover:bg-slate-200 dark:hover:bg-white/20"
+                           ? "bg-cheese-50 dark:bg-[#162238] text-cheese-700 dark:text-sky-100 border border-cheese-200 dark:border-[#26415f] shadow-none"
+                           : "bg-white/78 dark:bg-[#162238] text-slate-500 dark:text-slate-300 border border-slate-200/70 dark:border-[#24344f] hover:bg-white dark:hover:bg-[#1b2b45]"
                        }
                        ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
                      `}
                 >
                   <div
-                    className={`p-1 rounded-full transition-colors duration-300 ${thinkEnabled ? "bg-white/20 text-white" : "bg-slate-200 text-slate-400 dark:bg-white/10"}`}
+                    className={`p-1 rounded-full transition-all duration-200 ease-spring ${thinkEnabled ? "bg-cheese-500 dark:bg-[#234463] text-white dark:text-sky-100" : "bg-slate-200 text-slate-400 dark:bg-[#22314a]"}`}
                   >
                     <Brain size={12} strokeWidth={3} />
                   </div>
-                  <span
-                    className={`text-[11px] font-extrabold transition-colors duration-300`}
-                  >
+                  <span className="text-[11px] font-extrabold transition-colors duration-200">
                     深度思考
                   </span>
 
                   <div
-                    className={`w-2 h-2 rounded-full transition-all duration-500 ${thinkEnabled ? "bg-white scale-125" : "bg-slate-300 dark:bg-slate-600 scale-75"}`}
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ease-spring ${thinkEnabled ? "bg-cheese-500 dark:bg-sky-300 scale-100" : "bg-slate-300 dark:bg-slate-600 scale-75"}`}
                   ></div>
                 </div>
               </div>
@@ -1195,30 +1201,40 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     />
                   </div>
                 )}
-                <Button
-                  size="icon"
+                <button
+                  type="button"
                   onClick={handleSend}
                   disabled={!canSend}
                   className={`
-                       shrink-0 !w-11 !h-11 !rounded-[20px] p-0 ${SMOOTH_SPRING_TRANSITION}
+                       relative isolate shrink-0 flex h-12 w-12 items-center justify-center overflow-hidden rounded-[20px] border ${SMOOTH_SPRING_TRANSITION}
                        disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:scale-100 disabled:hover:shadow-none
                        ${
                          canSend
-                           ? "bg-gradient-to-br from-cheese-400 to-cheese-600 dark:from-starlight-400 dark:to-starlight-600 shadow-[0_8px_20px_-6px_rgba(251,140,0,0.5)] dark:shadow-[0_8px_20px_-6px_rgba(14,165,233,0.5)] hover:scale-105 hover:-translate-y-1 active:scale-95 active:rotate-2"
-                           : "bg-slate-100 dark:bg-white/10 text-slate-300 dark:text-slate-600 shadow-none"
+                           ? "border-[#2c4565] shadow-[0_16px_28px_-18px_rgba(56,189,248,0.78)] hover:shadow-[0_18px_30px_-18px_rgba(56,189,248,0.66)] hover:scale-[1.02] hover:-translate-y-px active:scale-[0.98]"
+                           : "border-slate-200 dark:border-[#24344f] shadow-none"
                        }
                      `}
                 >
+                  <span
+                    className={`absolute inset-[1px] rounded-[18px] ${
+                      canSend
+                        ? "bg-[linear-gradient(145deg,#66d3ff_0%,#38bdf8_45%,#2563eb_100%)]"
+                        : "bg-slate-100 dark:bg-[#162238]"
+                    }`}
+                  />
+                  {canSend && (
+                    <span className="pointer-events-none absolute inset-0 rounded-[20px] bg-[radial-gradient(circle_at_28%_20%,rgba(255,255,255,0.3),transparent_42%)]" />
+                  )}
                   <ArrowUp
-                    size={22}
+                    size={20}
                     strokeWidth={3}
                     className={
                       canSend
-                        ? "text-white"
-                        : "text-slate-300 dark:text-slate-600"
+                        ? "relative z-10 text-white"
+                        : "relative z-10 text-slate-300 dark:text-slate-500"
                     }
                   />
-                </Button>
+                </button>
               </div>
             </div>
           </div>

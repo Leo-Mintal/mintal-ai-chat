@@ -39,7 +39,7 @@ export const Settings: React.FC<SettingsProps> = ({
       <div className="sticky top-0 z-10 flex items-center gap-4 px-6 py-4 bg-white/60 dark:bg-night-card/60 backdrop-blur-md border-b border-slate-200/60 dark:border-white/5">
         <button
           onClick={onBack}
-          className="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-starlight-100 hover:bg-white/80 dark:hover:bg-white/10 rounded-xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-110 active:scale-90 shadow-sm hover:shadow-md"
+          className="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-starlight-100 hover:bg-white/80 dark:hover:bg-white/10 rounded-xl transition-all duration-200 ease-spring hover:scale-[1.04] active:scale-[0.96] shadow-sm hover:shadow-md"
         >
           <ArrowLeft size={20} />
         </button>
@@ -63,7 +63,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
             样式配置
           </h3>
-          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-[1.01]">
+          <div className="bg-white/72 dark:bg-night-card/52 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300 ease-spring hover:scale-[1.008]">
             <div className="p-5 sm:p-6 flex items-center justify-between">
               <div>
                 <div className="font-bold text-slate-800 dark:text-slate-200">
@@ -83,11 +83,11 @@ export const Settings: React.FC<SettingsProps> = ({
                     key={option.value}
                     onClick={() => setTheme(option.value as Theme)}
                     className={`
-                      flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+                      flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all duration-200 ease-spring
                       ${
                         theme === option.value
-                          ? "bg-white dark:bg-starlight-500 text-cheese-600 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10 scale-105"
-                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5 hover:scale-105"
+                          ? "bg-white dark:bg-starlight-500 text-cheese-600 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10 scale-[1.03]"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5 hover:scale-[1.03]"
                       }
                     `}
                   >
@@ -135,7 +135,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
             通知
           </h3>
-          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-[1.01] divide-y divide-slate-100 dark:divide-white/5">
+          <div className="bg-white/72 dark:bg-night-card/52 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300 ease-spring hover:scale-[1.008] divide-y divide-slate-100 dark:divide-white/5">
             <div className="p-5 sm:p-6 flex items-center justify-between">
               <div>
                 <div className="font-bold text-slate-800 dark:text-slate-200">
@@ -183,7 +183,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
             隐私与数据
           </h3>
-          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-[1.01]">
+          <div className="bg-white/72 dark:bg-night-card/52 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300 ease-spring hover:scale-[1.008]">
             <div className="p-5 sm:p-6 flex flex-col items-stretch sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-slate-800 dark:text-slate-200">
@@ -196,7 +196,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <Button
                 variant="secondary"
                 size="sm"
-                className="w-full sm:w-auto sm:min-w-[112px] h-10 whitespace-nowrap text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10 dark:border-red-900/30 dark:text-red-400 rounded-2xl sm:rounded-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                className="w-full sm:w-auto sm:min-w-[112px] h-10 whitespace-nowrap text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/10 dark:border-red-900/30 dark:text-red-400 rounded-2xl sm:rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 ease-spring"
               >
                 清除数据
               </Button>
@@ -218,7 +218,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
             用量管理
           </h3>
-          <div className="bg-white/70 dark:bg-night-card/50 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-[1.01]">
+          <div className="bg-white/72 dark:bg-night-card/52 backdrop-blur-sm border-[2px] border-white dark:border-white/10 rounded-[32px] overflow-hidden shadow-soft hover:shadow-cheese-sm dark:hover:shadow-glow transition-all duration-300 ease-spring hover:scale-[1.008]">
             <div className="p-5 sm:p-6 flex flex-col items-stretch sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-slate-800 dark:text-slate-200">
@@ -229,7 +229,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 variant="secondary"
                 size="sm"
                 onClick={onNavigateToUsageManagement}
-                className="w-full sm:w-auto rounded-2xl sm:rounded-xl whitespace-nowrap hover:scale-105 active:scale-95 transition-all duration-300"
+                className="w-full sm:w-auto rounded-2xl sm:rounded-xl whitespace-nowrap hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 ease-spring"
               >
                 进入用量管理
               </Button>

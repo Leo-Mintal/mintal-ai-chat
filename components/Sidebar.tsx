@@ -111,14 +111,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Backdrop */}
       <div
-        className={`fixed inset-0 bg-warm-900/20 dark:bg-black/50 backdrop-blur-sm z-30 transition-opacity duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:hidden ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        className={`fixed inset-0 bg-warm-900/20 dark:bg-black/50 backdrop-blur-sm z-30 transition-opacity duration-300 ease-soft lg:hidden ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         onClick={() => setIsOpen(false)}
       />
 
       <aside
         className={`
         fixed lg:static inset-y-0 left-0 z-40 h-full
-        flex flex-col transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+        flex flex-col transition-all duration-300 ease-spring motion-reduce:transition-none
         w-[85vw] sm:w-[300px]
         ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         ${isDesktopOpen ? "lg:w-[300px]" : "lg:w-0"}
@@ -133,8 +133,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="flex items-center gap-3 group cursor-pointer select-none"
               onClick={() => handleNavigation("CHAT")}
             >
-              <div className="relative transform transition-transform duration-500 cubic-bezier(0.68, -0.6, 0.32, 1.6) group-hover:scale-125 group-hover:rotate-12 group-active:scale-90">
-                <div className="w-10 h-10 bg-gradient-to-tr from-cheese-400 to-cheese-300 dark:from-starlight-500 dark:to-starlight-600 rounded-[18px] rotate-3 flex items-center justify-center shadow-lg text-white group-hover:shadow-cheese dark:group-hover:shadow-glow transition-shadow group-hover:animate-wiggle">
+              <div className="relative transition-transform duration-200 ease-spring group-hover:scale-[1.02] group-hover:rotate-2 group-active:scale-[0.98]">
+                <div className="w-10 h-10 bg-gradient-to-tr from-cheese-400 to-cheese-300 dark:from-starlight-500 dark:to-starlight-600 rounded-[18px] rotate-3 flex items-center justify-center shadow-lg text-white group-hover:shadow-cheese dark:group-hover:shadow-glow transition-shadow duration-200 group-hover:animate-wiggle">
                   <Sparkles className="w-5 h-5 fill-white" />
                 </div>
               </div>
@@ -146,14 +146,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Mobile Close Button */}
             <button
               onClick={() => setIsOpen(false)}
-              className="lg:hidden p-2 text-warm-400 hover:text-warm-600 hover:bg-white/50 rounded-full transition-all active:scale-90"
+              className="lg:hidden p-2.5 text-warm-400 hover:text-warm-600 hover:bg-white/55 rounded-full border border-white/30 transition-all duration-200 ease-spring hover:-translate-y-px active:scale-[0.98]"
             >
               <X size={20} />
             </button>
             {/* Desktop Collapse */}
             <button
               onClick={() => setIsDesktopOpen(false)}
-              className="hidden lg:block dark:hidden p-2 text-warm-400 dark:text-starlight-300 hover:bg-cheese-100 dark:hover:bg-white/10 rounded-full transition-all duration-500 cubic-bezier(0.68, -0.6, 0.32, 1.6) opacity-0 group-hover:opacity-100 hover:scale-125 active:scale-75"
+              className="hidden lg:block dark:hidden p-2.5 text-warm-400 dark:text-starlight-300 bg-white/40 hover:bg-cheese-100 dark:hover:bg-white/10 rounded-full border border-white/30 opacity-70 hover:opacity-100 transition-all duration-200 ease-spring hover:-translate-y-px hover:scale-[1.03] active:scale-[0.98]"
             >
               <X size={18} />
             </button>
@@ -169,9 +169,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onNewChat();
                 handleNavigation("CHAT");
               }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 bg-cheese-100/50 dark:bg-white/5 hover:bg-cheese-100 dark:hover:bg-white/10 border-2 border-dashed border-cheese-300 dark:border-starlight-500/30 rounded-[24px] text-cheese-600 dark:text-starlight-300 font-bold text-sm transition-all duration-500 cubic-bezier(0.68, -0.6, 0.32, 1.6) hover:scale-105 hover:-translate-y-1 active:scale-95 group shadow-sm hover:shadow-cheese-sm dark:hover:shadow-glow"
+              className="w-full flex items-center gap-3 px-4 py-3.5 bg-cheese-100/50 dark:bg-white/5 hover:bg-cheese-100 dark:hover:bg-white/10 border-2 border-dashed border-cheese-300 dark:border-starlight-500/30 rounded-[24px] text-cheese-600 dark:text-starlight-300 font-bold text-sm transition-all duration-200 ease-spring hover:scale-[1.008] hover:-translate-y-px active:scale-[0.99] group shadow-sm hover:shadow-cheese-sm dark:hover:shadow-glow"
             >
-              <div className="bg-cheese-400 dark:bg-starlight-500 text-white p-1 rounded-full group-hover:rotate-180 transition-transform duration-700 cubic-bezier(0.34, 1.56, 0.64, 1)">
+              <div className="bg-cheese-400 dark:bg-starlight-500 text-white p-1 rounded-full group-hover:rotate-45 transition-transform duration-200 ease-spring">
                 <Plus size={16} strokeWidth={3} />
               </div>
               <span>开启新对话</span>
@@ -240,18 +240,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         }}
                         style={{ animationDelay: `${0.2 + idx * 0.05}s` }}
                         className={`
-                          w-full flex items-center gap-3 px-4 py-3 rounded-[20px] text-sm transition-all duration-500 cubic-bezier(0.68, -0.6, 0.32, 1.6) text-left relative animate-slide-up-bouncy
-                          hover:scale-[1.05] active:scale-95 hover:shadow-sm
+                          w-full flex items-center gap-3 px-4 py-3 rounded-[20px] text-sm transition-all duration-200 ease-spring text-left relative animate-slide-up-bouncy
+                          hover:scale-[1.01] hover:-translate-y-px active:scale-[0.99] hover:shadow-sm
                           ${
                             isActive
-                              ? "bg-white dark:bg-white/10 shadow-soft text-cheese-600 dark:text-starlight-300 font-bold scale-[1.02] ring-2 ring-cheese-100/50 dark:ring-white/5"
+                              ? "bg-white dark:bg-white/10 shadow-soft text-cheese-600 dark:text-starlight-300 font-bold scale-[1.01] ring-2 ring-cheese-100/50 dark:ring-white/5"
                               : "text-warm-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-white/5"
                           }
                         `}
                       >
                         <MessageCircle
                           size={18}
-                          className={`shrink-0 transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isActive ? "scale-110 fill-current rotate-[-10deg]" : "group-hover:scale-110 group-hover:rotate-12"}`}
+                          className={`shrink-0 transition-transform duration-200 ease-spring ${isActive ? "scale-[1.03] fill-current rotate-[-3deg]" : "group-hover:scale-[1.02] group-hover:rotate-2"}`}
                         />
                         <span className="truncate flex-1 font-medium">
                           {conv.title}
@@ -264,7 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               openMenuId === conv.id ? null : conv.id,
                             );
                           }}
-                          className={`p-1.5 rounded-full hover:bg-cream-200 dark:hover:bg-white/20 text-warm-400 transition-all duration-300 hover:scale-110 active:scale-90 ${isActive || openMenuId === conv.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                          className={`p-1.5 rounded-full hover:bg-cream-200 dark:hover:bg-white/20 text-warm-400 transition-all duration-200 ease-spring hover:scale-[1.03] active:scale-[0.98] ${isActive || openMenuId === conv.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                         >
                           <MoreHorizontal size={16} />
                         </div>
@@ -306,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={onLoadMoreConversations}
                 disabled={isLoadingMoreConversations}
-                className="w-full mt-3 px-4 py-2.5 rounded-2xl text-xs font-bold text-warm-500 dark:text-slate-300 border border-cheese-200/70 dark:border-white/10 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-all duration-300 hover:scale-[1.05] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed animate-slide-up-bouncy"
+                className="w-full mt-3 px-4 py-2.5 rounded-2xl text-xs font-bold text-warm-500 dark:text-slate-300 border border-cheese-200/70 dark:border-white/10 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 transition-all duration-200 ease-spring hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed animate-slide-up-bouncy"
               >
                 {isLoadingMoreConversations ? "加载中..." : "加载更多"}
               </button>
@@ -317,9 +317,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="p-4 bg-cream-50/50 dark:bg-black/20 backdrop-blur-sm mt-auto">
             <div
               onClick={() => handleNavigation("PROFILE")}
-              className="flex items-center gap-3 p-2 rounded-[24px] hover:bg-white dark:hover:bg-white/10 transition-all duration-500 cubic-bezier(0.68, -0.6, 0.32, 1.6) cursor-pointer group shadow-sm hover:shadow-cheese-sm dark:hover:shadow-glow border border-transparent hover:border-cheese-100 dark:hover:border-white/5 hover:-translate-y-1 hover:scale-105 active:scale-95"
+              className="flex items-center gap-3 p-2 rounded-[24px] hover:bg-white dark:hover:bg-white/10 transition-all duration-300 ease-spring cursor-pointer group shadow-sm hover:shadow-cheese-sm dark:hover:shadow-glow border border-transparent hover:border-cheese-100 dark:hover:border-white/5 hover:-translate-y-px hover:scale-[1.02] active:scale-[0.98]"
             >
-              <div className="relative group-hover:scale-110 transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)">
+              <div className="relative group-hover:scale-[1.04] transition-transform duration-300 ease-spring">
                 <img
                   src={user.avatar}
                   alt="User"
@@ -341,7 +341,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     e.stopPropagation();
                     handleNavigation("SETTINGS");
                   }}
-                  className="p-2 text-warm-400 dark:text-starlight-300 hover:text-cheese-600 dark:hover:text-starlight-100 hover:bg-cheese-50 dark:hover:bg-white/10 rounded-xl transition-all hover:scale-110 active:scale-90"
+                  className="p-2 text-warm-400 dark:text-starlight-300 hover:text-cheese-600 dark:hover:text-starlight-100 hover:bg-cheese-50 dark:hover:bg-white/10 rounded-xl transition-all duration-200 ease-spring hover:scale-[1.04] active:scale-[0.96]"
                 >
                   <Settings size={16} />
                 </button>
@@ -350,7 +350,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     e.stopPropagation();
                     onLogout();
                   }}
-                  className="p-2 text-warm-400 dark:text-starlight-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all hover:scale-110 active:scale-90"
+                  className="p-2 text-warm-400 dark:text-starlight-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 ease-spring hover:scale-[1.04] active:scale-[0.96]"
                 >
                   <LogOut size={16} />
                 </button>

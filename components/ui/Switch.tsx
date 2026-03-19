@@ -47,7 +47,7 @@ export const Switch: React.FC<SwitchProps> = ({
         }
       }}
       className={`
-        relative inline-flex shrink-0 items-center rounded-full transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+        relative inline-flex shrink-0 items-center rounded-full transition-all duration-300 ease-spring
         focus:outline-none focus-visible:ring-2 focus-visible:ring-cheese-300 dark:focus-visible:ring-starlight-400
         disabled:opacity-60 disabled:cursor-not-allowed border-2 border-transparent
         ${sizeClasses.track}
@@ -64,10 +64,10 @@ export const Switch: React.FC<SwitchProps> = ({
         aria-hidden="true"
         className={`
           pointer-events-none absolute rounded-full bg-white shadow-sm ring-0
-          transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+          transition-all duration-300 ease-spring
           ${sizeClasses.thumb}
           ${checked ? sizeClasses.checkedTranslate : sizeClasses.uncheckedTranslate}
-          ${checked ? "scale-110" : "scale-100"}
+          ${checked ? "scale-[1.03]" : "scale-100"}
         `}
       />
     </button>

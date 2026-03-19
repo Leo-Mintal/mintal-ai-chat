@@ -83,7 +83,7 @@ export const Profile: React.FC<ProfileProps> = ({
       <div className="sticky top-0 z-10 flex items-center gap-4 px-6 py-4 bg-white/60 dark:bg-night-card/60 backdrop-blur-md border-b border-slate-200/60 dark:border-white/5">
         <button
           onClick={onBack}
-          className="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-starlight-300 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/10 rounded-xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-110 active:scale-90 shadow-sm"
+          className="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-starlight-300 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/10 rounded-xl transition-all duration-200 ease-spring hover:scale-[1.04] active:scale-[0.96] shadow-sm"
         >
           <ArrowLeft size={20} />
         </button>
@@ -98,19 +98,13 @@ export const Profile: React.FC<ProfileProps> = ({
           style={{ animationDelay: "0.1s" }}
         >
           <div className="flex flex-col items-center mb-10 group">
-            <div className="relative w-32 h-32 rounded-full border-[6px] border-white dark:border-white/10 shadow-xl overflow-hidden bg-slate-100 dark:bg-night-surface ring-1 ring-slate-100 dark:ring-white/5 transform transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) group-hover:scale-110 group-hover:rotate-3">
+            <div className="relative w-32 h-32 rounded-full border-[6px] border-white dark:border-white/10 shadow-xl overflow-hidden bg-slate-100 dark:bg-night-surface ring-1 ring-slate-100 dark:ring-white/5 transform transition-transform duration-300 ease-spring group-hover:scale-[1.04] group-hover:rotate-2">
               <img
                 src={avatarSrc}
                 alt="Avatar"
                 className="w-full h-full object-cover"
               />
             </div>
-            <p
-              className="text-xs font-bold text-slate-400 dark:text-starlight-300/70 mt-4 bg-white/50 dark:bg-white/5 px-4 py-1.5 rounded-full backdrop-blur-sm animate-pop-in"
-              style={{ animationDelay: "0.2s" }}
-            >
-              当前头像由后端资料返回，后续可继续扩展头像修改接口
-            </p>
           </div>
 
           <div className="space-y-8">
@@ -124,7 +118,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 icon={<UserIcon size={18} />}
                 placeholder="请输入用户名"
-                className="rounded-[24px] dark:bg-night-surface dark:border-white/5 dark:focus:border-starlight-500 h-14 transition-all duration-300 focus:scale-[1.02]"
+                className="rounded-[24px] dark:bg-night-surface dark:border-white/5 dark:focus:border-starlight-500 h-14 transition-all duration-200 ease-spring focus:scale-[1.01]"
               />
             </div>
 
@@ -138,7 +132,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 onChange={(e) => setEmail(e.target.value)}
                 icon={<Mail size={18} />}
                 placeholder="请输入邮箱"
-                className="rounded-[24px] dark:bg-night-surface dark:border-white/5 dark:focus:border-starlight-500 h-14 transition-all duration-300 focus:scale-[1.02]"
+                className="rounded-[24px] dark:bg-night-surface dark:border-white/5 dark:focus:border-starlight-500 h-14 transition-all duration-200 ease-spring focus:scale-[1.01]"
               />
             </div>
 
@@ -160,7 +154,7 @@ export const Profile: React.FC<ProfileProps> = ({
                   !email.trim() ||
                   (name.trim() === user.name && email.trim() === user.email)
                 }
-                className={`w-full h-14 flex items-center justify-center gap-2 text-lg rounded-full shadow-cheese hover:shadow-cheese dark:shadow-glow hover:scale-[1.02] active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) ${isSaved ? "bg-green-500 hover:bg-green-600 border-green-500" : ""}`}
+                className={`w-full h-14 flex items-center justify-center gap-2 text-lg rounded-full shadow-cheese hover:shadow-cheese dark:shadow-glow hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 ease-spring ${isSaved ? "bg-green-500 hover:bg-green-600 border-green-500" : ""}`}
               >
                 {isSaved ? "已保存" : "保存更改"}
                 {isSaved ? (

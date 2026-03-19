@@ -265,7 +265,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="sticky top-0 z-10 flex items-center gap-4 px-6 py-4 bg-white/60 dark:bg-night-card/60 backdrop-blur-md border-b border-slate-200/60 dark:border-white/5">
         <button
           onClick={onBack}
-          className="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-starlight-300 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/10 rounded-xl transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-110 active:scale-90 shadow-sm"
+          className="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-starlight-300 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/10 rounded-xl transition-all duration-200 ease-spring hover:scale-[1.04] active:scale-[0.96] shadow-sm"
         >
           <ArrowLeft size={20} />
         </button>
@@ -319,7 +319,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   icon={<KeyRound size={18} />}
                   error={errors.password}
                   placeholder="请输入管理员密码"
-                  className="h-14 rounded-[24px] transition-all duration-300 focus:scale-[1.02]"
+                  className="h-14 rounded-[24px] transition-all duration-200 ease-spring focus:scale-[1.01]"
                 />
               </div>
 
@@ -329,7 +329,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 <Button
                   onClick={handleVerifyPassword}
-                  className="w-full h-12 rounded-full text-base hover:scale-[1.02] active:scale-95 transition-all duration-300"
+                  className="w-full h-12 rounded-full text-base hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 ease-spring"
                 >
                   验证并进入
                 </Button>
@@ -352,7 +352,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={handleLockPanel}
-                    className="rounded-full hover:scale-105 active:scale-95 transition-all"
+                    className="rounded-full hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 ease-spring"
                   >
                     重新上锁
                   </Button>
@@ -382,7 +382,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         void refreshQuota(userIdNumber, false);
                       }
                     }}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-warm-500 dark:text-slate-300 hover:text-cheese-600 dark:hover:text-starlight-200 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-warm-500 dark:text-slate-300 hover:text-cheese-600 dark:hover:text-starlight-200 transition-all duration-200 ease-spring hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                     disabled={!userIdNumber || isRefreshingQuota}
                   >
                     <RefreshCcw
@@ -396,7 +396,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {quotaSnapshot &&
                 (!userIdNumber || quotaSnapshot.userId === userIdNumber) ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs animate-pop-in">
-                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-105 transition-transform duration-300">
+                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-[1.02] transition-transform duration-200 ease-spring">
                       <p className="text-warm-400 dark:text-slate-400">
                         总额度
                       </p>
@@ -404,7 +404,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {quotaSnapshot.quotaLimit}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-105 transition-transform duration-300">
+                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-[1.02] transition-transform duration-200 ease-spring">
                       <p className="text-warm-400 dark:text-slate-400">
                         已使用
                       </p>
@@ -412,13 +412,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {quotaSnapshot.quotaUsed}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-105 transition-transform duration-300">
+                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-[1.02] transition-transform duration-200 ease-spring">
                       <p className="text-warm-400 dark:text-slate-400">剩余</p>
                       <p className="text-sm font-extrabold text-warm-700 dark:text-white mt-1">
                         {quotaSnapshot.quotaRemaining}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-105 transition-transform duration-300">
+                    <div className="rounded-2xl bg-cream-50/80 dark:bg-black/20 border border-cheese-100 dark:border-white/10 px-3 py-2 hover:scale-[1.02] transition-transform duration-200 ease-spring">
                       <p className="text-warm-400 dark:text-slate-400">
                         重置时间
                       </p>
@@ -449,7 +449,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     icon={<Hash size={18} />}
                     error={errors.userId}
                     placeholder="请输入 user_id"
-                    className="h-14 rounded-[24px] transition-all duration-300 focus:scale-[1.02]"
+                    className="h-14 rounded-[24px] transition-all duration-200 ease-spring focus:scale-[1.01]"
                   />
                 </div>
 
@@ -470,7 +470,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     icon={<Hash size={18} />}
                     error={errors.dailyLimit}
                     placeholder="例如 25"
-                    className="h-14 rounded-[24px] transition-all duration-300 focus:scale-[1.02]"
+                    className="h-14 rounded-[24px] transition-all duration-200 ease-spring focus:scale-[1.01]"
                   />
                 </div>
 
@@ -481,7 +481,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <Button
                     type="submit"
                     loading={isSubmitting}
-                    className="w-full h-12 rounded-full text-base hover:scale-[1.02] active:scale-95 transition-all duration-300"
+                    className="w-full h-12 rounded-full text-base hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 ease-spring"
                   >
                     更新每日额度
                   </Button>

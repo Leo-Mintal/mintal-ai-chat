@@ -89,8 +89,8 @@ export const Select: React.FC<SelectProps> = ({
           w-full bg-white/40 dark:bg-black/20 backdrop-blur-xl border-[2px]
           text-warm-800 dark:text-white text-sm font-bold rounded-[24px]
           focus:outline-none
-          p-3 flex items-center justify-between transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1)
-          shadow-sm hover:shadow-cheese-sm dark:hover:shadow-glow hover:scale-[1.02] active:scale-95
+          p-3 flex items-center justify-between transition-all duration-200 ease-spring
+          shadow-sm hover:shadow-cheese-sm dark:hover:shadow-glow hover:scale-[1.01] active:scale-[0.98]
           disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-sm disabled:active:scale-100
           ${isOpen
             ? 'border-cheese-300 dark:border-starlight-500 ring-4 ring-cheese-100 dark:ring-starlight-500/20 bg-white/60 dark:bg-black/40'
@@ -105,7 +105,7 @@ export const Select: React.FC<SelectProps> = ({
         {isLoading ? (
           <Loader2 className="w-4 h-4 animate-spin text-cheese-500 dark:text-starlight-400" strokeWidth={2.5} />
         ) : (
-          <ChevronDown className={`w-4 h-4 text-warm-400 transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isOpen ? 'rotate-180 text-cheese-500 dark:text-starlight-500 scale-125' : ''}`} strokeWidth={2.5} />
+          <ChevronDown className={`w-4 h-4 text-warm-400 transition-transform duration-200 ease-spring ${isOpen ? 'rotate-180 text-cheese-500 dark:text-starlight-500 scale-110' : ''}`} strokeWidth={2.5} />
         )}
       </button>
 
@@ -150,8 +150,8 @@ export const Select: React.FC<SelectProps> = ({
                             setIsOpen(false);
                           }}
                           className={`
-                            w-full text-left px-4 py-3 rounded-[20px] flex items-center justify-between group transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1)
-                            hover:scale-[1.02] active:scale-95
+                            w-full text-left px-4 py-3 rounded-[20px] flex items-center justify-between group transition-all duration-200 ease-spring
+                            hover:scale-[1.01] active:scale-[0.98]
                             ${isSelected
                               ? 'bg-cheese-100 dark:bg-starlight-500/20 text-cheese-700 dark:text-starlight-100 shadow-sm'
                               : 'hover:bg-white/50 dark:hover:bg-white/10 text-warm-600 dark:text-slate-300'

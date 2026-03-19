@@ -86,7 +86,7 @@ const UnifiedBackground = () => {
       </div>
 
       {/* Twinkling Stars for Dark Mode */}
-      <div className="opacity-0 dark:opacity-100 transition-opacity duration-1000">
+      <div className="opacity-0 dark:opacity-100 transition-opacity duration-300">
         {stars.map((star) => (
           <div
             key={star.id}
@@ -265,18 +265,23 @@ const App: React.FC = () => {
     Record<string, ConversationMemoryMeta>
   >({});
 
-  const [loading, setLoading] = useState(false);
+  const [conversationLoadingState, setConversationLoadingState] = useState<
+    Record<string, boolean>
+  >({});
   const [modalOpen, setModalOpen] = useState<"none" | "confirm_delete">("none");
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
   const [quotaInfo, setQuotaInfo] = useState<UserQuotaSummary | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [quotaError, setQuotaError] = useState("");
-  const sendingGuardRef = useRef(false);
+  const sendingGuardRef = useRef<Record<string, boolean>>({});
   const initialMemoryRequestSeqRef = useRef<Record<string, number>>({});
   const olderMemoryLoadingRef = useRef<Record<string, boolean>>({});
   const activeConversationMeta = activeConvId
     ? conversationMemoryMeta[activeConvId]
     : undefined;
+  const activeConversationLoading = activeConvId
+    ? Boolean(conversationLoadingState[activeConvId])
+    : false;
   const historyLoading = Boolean(activeConversationMeta?.isLoadingInitial);
 
   useEffect(() => {
@@ -298,6 +303,40 @@ const App: React.FC = () => {
   useEffect(() => {
     saveAiBubblePreference(aiBubbleEnabled);
   }, [aiBubbleEnabled]);
+
+  const setConversationLoading = useCallback(
+    (conversationId: string, nextLoading: boolean) => {
+      setConversationLoadingState((prev) => {
+        if (nextLoading) {
+          if (prev[conversationId]) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [conversationId]: true,
+          };
+        }
+
+        if (!prev[conversationId]) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[conversationId];
+        return next;
+      });
+    },
+    [],
+  );
+
+  const isConversationBusy = useCallback((conversationId?: string | null) => {
+    if (!conversationId) {
+      return false;
+    }
+
+    return Boolean(sendingGuardRef.current[conversationId]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -570,6 +609,25 @@ const App: React.FC = () => {
 
   const loadInitialConversationMemories = useCallback(
     async (conversationId: string, targetUser: User | null) => {
+      const cachedMessages = messages[conversationId] || [];
+      const existingMeta = conversationMemoryMeta[conversationId];
+      const hasStreamingMessage = cachedMessages.some(
+        (message) => message.role === "model" && message.isStreaming,
+      );
+
+      if (existingMeta?.isLoadingInitial) {
+        return;
+      }
+
+      if (
+        hasStreamingMessage ||
+        (existingMeta?.initialized &&
+          !existingMeta.loadError &&
+          cachedMessages.length > 0)
+      ) {
+        return;
+      }
+
       const userId = toPositiveInteger(targetUser?.id);
       if (!userId) {
         updateConversationMemoryMeta(conversationId, (prev) => ({
@@ -625,10 +683,21 @@ const App: React.FC = () => {
           result.items.map(mapMemoryItemToMessage),
         );
 
-        setMessages((prev) => ({
-          ...prev,
-          [conversationId]: remoteMessages,
-        }));
+        setMessages((prev) => {
+          const currentMessages = prev[conversationId] || [];
+          const hasStreamingLocalMessage = currentMessages.some(
+            (message) => message.role === "model" && message.isStreaming,
+          );
+
+          if (hasStreamingLocalMessage) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [conversationId]: remoteMessages,
+          };
+        });
 
         updateConversationMemoryMeta(conversationId, (prev) => ({
           ...prev,
@@ -673,7 +742,7 @@ const App: React.FC = () => {
         }));
       }
     },
-    [conversations, messages, updateConversationMemoryMeta],
+    [conversationMemoryMeta, conversations, messages, updateConversationMemoryMeta],
   );
 
   const loadOlderConversationMemories = useCallback(
@@ -827,8 +896,10 @@ const App: React.FC = () => {
           setConversations([]);
           setMessages({});
           setConversationMemoryMeta({});
+          setConversationLoadingState({});
           initialMemoryRequestSeqRef.current = {};
           olderMemoryLoadingRef.current = {};
+          sendingGuardRef.current = {};
           setActiveConvId(null);
           setConversationListPage(1);
           setConversationListHasMore(false);
@@ -895,6 +966,16 @@ const App: React.FC = () => {
       delete next[id];
       delete initialMemoryRequestSeqRef.current[id];
       delete olderMemoryLoadingRef.current[id];
+      delete sendingGuardRef.current[id];
+      return next;
+    });
+    setConversationLoadingState((prev) => {
+      if (!prev[id]) {
+        return prev;
+      }
+
+      const next = { ...prev };
+      delete next[id];
       return next;
     });
 
@@ -962,8 +1043,10 @@ const App: React.FC = () => {
     setConversations([]);
     setMessages({});
     setConversationMemoryMeta({});
+    setConversationLoadingState({});
     initialMemoryRequestSeqRef.current = {};
     olderMemoryLoadingRef.current = {};
+    sendingGuardRef.current = {};
     setActiveConvId(null);
     setConversationListPage(1);
     setConversationListHasMore(false);
@@ -989,8 +1072,10 @@ const App: React.FC = () => {
       setConversations([]);
       setMessages({});
       setConversationMemoryMeta({});
+      setConversationLoadingState({});
       initialMemoryRequestSeqRef.current = {};
       olderMemoryLoadingRef.current = {};
+      sendingGuardRef.current = {};
       setActiveConvId(null);
       setConversationListPage(1);
       setConversationListHasMore(false);
@@ -1021,7 +1106,7 @@ const App: React.FC = () => {
     attachments: Attachment[],
     backendConversationId?: number,
   ) => {
-    setLoading(true);
+    setConversationLoading(chatId, true);
 
     const assistantMessageId = `${Date.now()}-assistant`;
     const createdAt = Date.now();
@@ -1181,12 +1266,12 @@ const App: React.FC = () => {
       }));
     } finally {
       window.clearInterval(durationTicker);
-      setLoading(false);
+      setConversationLoading(chatId, false);
     }
   };
 
   const handleSendMessage = async (text: string, attachments: Attachment[]) => {
-    if (sendingGuardRef.current || loading || historyLoading) {
+    if (historyLoading) {
       return;
     }
 
@@ -1211,6 +1296,10 @@ const App: React.FC = () => {
         },
       }));
       setActiveConvId(chatId);
+    }
+
+    if (isConversationBusy(chatId)) {
+      return;
     }
 
     const historyBeforeSend =
@@ -1256,7 +1345,7 @@ const App: React.FC = () => {
       (item) => item.id === chatId,
     );
 
-    sendingGuardRef.current = true;
+    sendingGuardRef.current[chatId] = true;
     try {
       await triggerAIResponse(
         chatId,
@@ -1266,12 +1355,12 @@ const App: React.FC = () => {
         currentConversation?.backendConversationId,
       );
     } finally {
-      sendingGuardRef.current = false;
+      delete sendingGuardRef.current[chatId];
     }
   };
 
   const handleEditMessage = async (messageId: string, newContent: string) => {
-    if (!activeConvId || sendingGuardRef.current || loading || historyLoading) {
+    if (!activeConvId || historyLoading || isConversationBusy(activeConvId)) {
       return;
     }
 
@@ -1314,7 +1403,7 @@ const App: React.FC = () => {
       (item) => item.id === activeConvId,
     );
 
-    sendingGuardRef.current = true;
+    sendingGuardRef.current[activeConvId] = true;
     try {
       await triggerAIResponse(
         activeConvId,
@@ -1324,7 +1413,7 @@ const App: React.FC = () => {
         currentConversation?.backendConversationId,
       );
     } finally {
-      sendingGuardRef.current = false;
+      delete sendingGuardRef.current[activeConvId];
     }
   };
 
@@ -1341,7 +1430,7 @@ const App: React.FC = () => {
   if (appState === AppState.AUTH) return <Auth onLogin={handleLogin} />;
 
   return (
-    <div className="flex h-screen bg-[#FFFDF5] dark:bg-night-bg font-sans overflow-hidden relative transition-colors duration-700">
+    <div className="flex h-screen bg-[#FFFDF5] dark:bg-night-bg font-sans overflow-hidden relative transition-colors duration-300">
       <UnifiedBackground />
 
       <Sidebar
@@ -1368,14 +1457,14 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 p-4 gap-4 h-full">
         {currentView === "CHAT" && (
           // Main Chat Container
-          <div className="flex-1 flex flex-col h-full bg-white/60 dark:bg-night-card/60 backdrop-blur-2xl rounded-[48px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] dark:shadow-night border-[3px] border-white/50 dark:border-white/5 overflow-hidden relative animate-pop-in origin-center group transition-all duration-500">
+          <div className="flex-1 flex flex-col h-full bg-white/62 dark:bg-night-card/62 backdrop-blur-2xl rounded-[48px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] dark:shadow-night border-[3px] border-white/55 dark:border-white/5 overflow-hidden relative animate-pop-in origin-center group transition-all duration-300">
             {/* Header with Frosted Glass Buttons */}
             <header className="h-[74px] sm:h-20 flex items-center gap-2.5 sm:gap-4 px-3 sm:px-6 z-20 shrink-0">
               <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
                 {/* Mobile Menu Button - Frosted Glass */}
                 <button
                   onClick={() => setIsSidebarOpen(true)}
-                  className="lg:hidden shrink-0 p-2.5 sm:p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
+                  className="lg:hidden shrink-0 p-2.5 sm:p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm transition-all duration-200 ease-spring motion-reduce:transition-none hover:-translate-y-px hover:scale-[1.02] active:scale-[0.98] hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
                 >
                   <Menu size={20} strokeWidth={2.5} />
                 </button>
@@ -1384,7 +1473,7 @@ const App: React.FC = () => {
                 {!isDesktopSidebarOpen && (
                   <button
                     onClick={() => setIsDesktopSidebarOpen(true)}
-                    className="hidden lg:flex shrink-0 p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
+                    className="hidden lg:flex shrink-0 p-3 text-warm-600 dark:text-starlight-300 bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[20px] shadow-sm transition-all duration-200 ease-spring motion-reduce:transition-none hover:-translate-y-px hover:scale-[1.02] active:scale-[0.98] hover:shadow-cheese-sm dark:hover:shadow-glow hover:bg-white/60"
                   >
                     <PanelLeftOpen size={20} strokeWidth={2.5} />
                   </button>
@@ -1407,7 +1496,7 @@ const App: React.FC = () => {
               <button
                 onClick={() => setModalOpen("confirm_delete")}
                 disabled={!activeConvId || !messages[activeConvId]?.length}
-                className="shrink-0 p-2.5 sm:p-3 ml-1 sm:ml-0 text-warm-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm hover:scale-110 active:scale-95 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="shrink-0 p-2.5 sm:p-3 ml-1 sm:ml-0 text-warm-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-[18px] sm:rounded-[20px] shadow-sm transition-all duration-200 ease-spring motion-reduce:transition-none hover:-translate-y-px hover:scale-[1.02] active:scale-[0.98] hover:bg-red-50 dark:hover:bg-red-900/20"
               >
                 <Trash2 size={20} strokeWidth={2.5} />
               </button>
@@ -1417,7 +1506,7 @@ const App: React.FC = () => {
               <ChatArea
                 conversationId={activeConvId}
                 messages={activeConvId ? messages[activeConvId] || [] : []}
-                isLoading={loading || historyLoading}
+                isLoading={activeConversationLoading || historyLoading}
                 hasMoreHistory={Boolean(activeConversationMeta?.hasMore)}
                 isLoadingMoreHistory={Boolean(
                   activeConversationMeta?.isLoadingMore,

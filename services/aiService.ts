@@ -305,6 +305,56 @@ const extractDeltaFromSource = (
   let contentChunk = "";
   let thinkingChunk = "";
 
+  const choices = Array.isArray(source.choices) ? source.choices : [];
+  const firstChoice = choices.length > 0 && isRecord(choices[0]) ? choices[0] : null;
+  const choiceMessage = firstChoice && isRecord(firstChoice.message) ? firstChoice.message : null;
+  const choiceDelta = firstChoice && isRecord(firstChoice.delta) ? firstChoice.delta : null;
+
+  if (choiceMessage) {
+    contentChunk =
+      pickText(
+        choiceMessage,
+        ["content", "response", "text", "output", "answer", "result"],
+        { trim: false },
+      ) || "";
+    thinkingChunk =
+      pickText(
+        choiceMessage,
+        [
+          "thinking",
+          "reasoning",
+          "reasoning_content",
+          "reasoningContent",
+          "think",
+        ],
+        { trim: false },
+      ) || "";
+  }
+
+  if (!contentChunk && choiceDelta) {
+    contentChunk =
+      pickText(
+        choiceDelta,
+        ["content", "response", "text", "output", "answer", "result"],
+        { trim: false },
+      ) || "";
+  }
+
+  if (!thinkingChunk && choiceDelta) {
+    thinkingChunk =
+      pickText(
+        choiceDelta,
+        [
+          "thinking",
+          "reasoning",
+          "reasoning_content",
+          "reasoningContent",
+          "think",
+        ],
+        { trim: false },
+      ) || "";
+  }
+
   if (isRecord(source.message)) {
     contentChunk =
       pickText(
